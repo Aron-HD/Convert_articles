@@ -1,5 +1,9 @@
+#! /usr/bin/env python
 from bs4 import BeautifulSoup as Soup
+# from pathlib import Path
+# from glob import glob
 import bleach, pypandoc, sys#, json
+
 
 
 tags = [
@@ -22,8 +26,11 @@ imgs = {
     "media/image2.jpg": f"/content/{AWARD_CODE}/133341f02",
     "media/image3.jpg": f"/content/{AWARD_CODE}/133341f03"
 }
+def convert_docx(file):
+    contents = pypandoc.convert_file(file, 'html')
+    return contents
 
-def bleachclean(content):
+def clean_html(content):
     cleaned = bleach.clean(content,
         attributes=attrs,
         tags=tags,
@@ -31,7 +38,7 @@ def bleachclean(content):
     )
     return cleaned
 
-def htmlparse(content):
+def amend_html(content):
     tree = Soup(content, "html.parser")
 
     # find all images, if images exist,
@@ -78,16 +85,9 @@ def htmlparse(content):
 
     # do final h3 changes to relevant award headers
 
-
-
     return tree
 
-def docx(file):
-    # pypandoc.download_pandoc()
-    contents = pypandoc.convert_file(file, 'html')
-    return contents
-
-def writefinal(file, contents):
+def write_html(file, contents):
     with open(file, 'w', encoding='utf-8') as f:
         f.write(contents)
         print("wrote file:", file)
@@ -102,7 +102,7 @@ def main():
     document = 'test/test.html'
 
     if '.docx' in document:
-        contents = docx(document)
+        contents = convert_docx(document)
     elif document.endswith('.html'):
         with open(document, encoding='utf-8') as f:
             contents = f.read()
@@ -110,8 +110,8 @@ def main():
     cleaned = bleachclean(contents)
     htmlcontent = htmlparse(cleaned)#.prettify()
 
-    outfile = 'cleaned.html'
-    writefinal(outfile, str(htmlcontent))
+    outfile = 'test/cleaned.html'
+    write_final(outfile, str(htmlcontent))
 
 if __name__ == '__main__':
     main()
