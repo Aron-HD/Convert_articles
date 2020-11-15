@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from bs4 import BeautifulSoup as Soup
-# from pathlib import Path
+from pathlib import Path
 # from glob import glob
 import importlib.resources, pypandoc, bleach, sys, json
 
@@ -13,21 +13,13 @@ imgs = {
     "media/image2.jpg": f"/content/{AWARD_CODE}/133341f02",
     "media/image3.jpg": f"/content/{AWARD_CODE}/133341f03"
 }
-def extract_docx_images(file):
-    '''
-    Runs bash shell script to unzip and rename images.
-    Returns old img path and new img filename in a json for subtitution in html.
-    '''
-    pass
-    return IMGS
 
-def load_json(folder, file):
+def load_json(file):
     '''
     Loads data from the specified json file.
-    Must give both arguments: <folder path>, <file>
     '''
     try:
-        with importlib.resources.path(folder, file) as f:
+        with open(file) as f:
             data = json.load(f)
             return data
     except Exception:
@@ -37,8 +29,18 @@ def convert_docx(file):
     '''
     Uses the pypandoc module to convert docx file to html content for parsing.
     '''
-    contents = pypandoc.convert_file(file, 'html')
+    ID = file.parent / file.stem
+    print(ID)
+    contents = pypandoc.convert_file(str(file), 'html5', extra_args=[f'--extract-media={ID}'])
     return contents
+
+def rename_docx_images(file):
+    '''
+    Rename extracted images.
+    Returns old img path and new img filename in a json for subtitution in html.
+    '''
+    pass
+    return IMGS
 
 def clean_html(content, TAGS):
     '''
@@ -46,8 +48,8 @@ def clean_html(content, TAGS):
     Tags and attributes are stored in json folder under '/json/tags.json'.
     '''
     cleaned = bleach.clean(content,
-        attributes=TAGS.attrs,
-        tags=TAGS.tags,
+        attributes=TAGS['attrs'],
+        tags=TAGS['tags'],
         strip=True
     )
     return cleaned
@@ -68,7 +70,7 @@ def amend_html(content):
                 src = i['src']
                 for k, v in imgs.items():
                     if k in src:
-                        i["src"] = src.replace(k, v)
+                        i['src'] = src.replace(k, v)
                         print(f'<img src="{k}"> --> <img src="{v}">')
     else:
         print('no images...')
@@ -90,7 +92,7 @@ def amend_html(content):
     pstrongs = tree.find_all('p')
     for p in pstrongs:
         if p.find('strong'):
-            if p.text.endswith((".",":","!","(",")",";")):
+            if p.text.endswith((".",",",":",";")):
                 pass
             else:
                 p.name = 'h5'
@@ -100,6 +102,8 @@ def amend_html(content):
         if h5:
             h5.strong.unwrap()
             print('<h5><strong> -->', h5)
+        else:
+            pass
 
     # do final h3 changes to relevant award headers
 
@@ -121,14 +125,13 @@ def main():
 - `./convert_articles.py <file_you_want_to_convert>`
 
 # FUNCTIONS
-- extract_docx_images():
-    Runs bash shell script to unzip and rename images.
-    Returns old img path and new img filename in a json for subtitution in html.
-- convert_docx(): 
-    Uses the pypandoc module to convert docx file to html content for parsing.    
 - load_json():
     Loads data from the specified json file.
-    Must give both arguments: <folder path>, <file>.
+- convert_docx(): 
+    Uses the pypandoc module to convert docx file to html content for parsing.    
+- rename_docx_images():
+    Rename extracted images.
+    Returns old img path and new img filename in a json for subtitution in html.
 - clean_html():
     Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
     Tags and attributes are stored in json folder under '/json/tags.json'.
@@ -140,24 +143,25 @@ def main():
     Outputs cleaned and amended html content to specified file name.
     Pass in file name and html contents.
     '''
-    SUBS = load_json('json', 'subs.json')
-    TAGS = load_json('json', 'tags.json')
+    SUBS = load_json('json_pkg/subs.json')
+    TAGS = load_json('json_pkg/tags.json')
 
-    # document = sys.argv[1]
-    # document = 'test/.docx'
-    document = 'test/test.html'
+    # doc = sys.argv[1]
+    doc = Path('test/131412.docx')
+    # doc = 'test/test.html'
 
-    if '.docx' in document:
-        # extract_docx_images(document)
-        contents = convert_docx(document)
-    elif document.endswith('.html'):
-        with open(document, encoding='utf-8') as f:
+    if doc.suffix == '.docx':
+        # extract_docx_images(doc)
+        contents = convert_docx(doc)
+    elif doc.suffix == '.html':
+        with open(doc, encoding='utf-8') as f:
             contents = f.read()
     
-    cleaned = clean_html(contents)
-    htmlcontent = amend_html(cleaned)#.prettify()
+    cleaned = clean_html(contents, TAGS)
+    htmlcontent = amend_html(cleaned).prettify()
 
-    outfile = 'test/cleaned.html'
+    # outfile = 'test/cleaned.html'
+    outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.html")
     write_html(outfile, str(htmlcontent))
 
 if __name__ == '__main__':
