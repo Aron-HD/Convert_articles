@@ -1,0 +1,12 @@
+###Python###
+
+__pycache__/
+/test
+/_archive
+*.msi
+*.docx
+*.html
+*.log
+*.txt
+*.sublime-project
+*.sublime-workspace
