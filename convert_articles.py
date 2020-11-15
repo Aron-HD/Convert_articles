@@ -2,22 +2,9 @@
 from bs4 import BeautifulSoup as Soup
 # from pathlib import Path
 # from glob import glob
-import bleach, pypandoc, sys#, json
+import importlib.resources, pypandoc, bleach, sys, json
 
-
-
-tags = [
-    'img','h1','h2', 'h3','h4','h5','br',
-    'b', 'strong', 'em', 'i', 'u', 'a', 'p',
-    'ul', 'li', 'ol'
-    ]
-attrs = {
-    'a': ['href'],
-    'img': ['src','alt'],
-    'ul': ['start', 'type'],
-    'ol': ['start', 'type']
-    }
-
+# pass in award / if award in subs.key JSON
 AWARD_CODE = 'WARC-AWARDS-MEDIA'
 
 # get these images written to JSON dict and pased in
@@ -26,21 +13,52 @@ imgs = {
     "media/image2.jpg": f"/content/{AWARD_CODE}/133341f02",
     "media/image3.jpg": f"/content/{AWARD_CODE}/133341f03"
 }
+def extract_docx_images(file):
+    '''
+    Runs bash shell script to unzip and rename images.
+    Returns old img path and new img filename in a json for subtitution in html.
+    '''
+    pass
+    return IMGS
+
+def load_json(folder, file):
+    '''
+    Loads data from the specified json file.
+    Must give both arguments: <folder path>, <file>
+    '''
+    try:
+        with importlib.resources.path(folder, file) as f:
+            data = json.load(f)
+            return data
+    except Exception:
+        raise
+
 def convert_docx(file):
+    '''
+    Uses the pypandoc module to convert docx file to html content for parsing.
+    '''
     contents = pypandoc.convert_file(file, 'html')
     return contents
 
-def clean_html(content):
+def clean_html(content, TAGS):
+    '''
+    Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
+    Tags and attributes are stored in json folder under '/json/tags.json'.
+    '''
     cleaned = bleach.clean(content,
-        attributes=attrs,
-        tags=tags,
+        attributes=TAGS.attrs,
+        tags=TAGS.tags,
         strip=True
     )
     return cleaned
 
 def amend_html(content):
+    '''
+    Parses cleaned html content from docx, running replacements to correct headings.
+    Heading substitutes are stored in json folder under '/json/subs.json'.
+    Also contains the award code variable for inserting in <img src""/>.
+    '''
     tree = Soup(content, "html.parser")
-
     # find all images, if images exist,
     # replace the source attribute to renamed image
     images = tree.find_all('img')
@@ -68,7 +86,7 @@ def amend_html(content):
     else:
         print('no headers to replace...')
     # match all p tags with bold and check punctuation
-    # endings to filter bold from subheadings in h5
+    # endings to filter bold sentences from subheadings in h5
     pstrongs = tree.find_all('p')
     for p in pstrongs:
         if p.find('strong'):
@@ -88,30 +106,59 @@ def amend_html(content):
     return tree
 
 def write_html(file, contents):
+    '''
+    Outputs cleaned and amended html content to specified file name.
+    Pass in file name and html contents.
+    '''
     with open(file, 'w', encoding='utf-8') as f:
         f.write(contents)
         print("wrote file:", file)
 
 def main():
     '''
-    if running from command line ./html_parse.py <file_you_want_to_convert>
-    takes dictionary from image_replace.sh script of image conversion names, to sub them in document
+# INSTRUCTIONS
+- If running from command line: 
+- `./convert_articles.py <file_you_want_to_convert>`
+
+# FUNCTIONS
+- extract_docx_images():
+    Runs bash shell script to unzip and rename images.
+    Returns old img path and new img filename in a json for subtitution in html.
+- convert_docx(): 
+    Uses the pypandoc module to convert docx file to html content for parsing.    
+- load_json():
+    Loads data from the specified json file.
+    Must give both arguments: <folder path>, <file>.
+- clean_html():
+    Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
+    Tags and attributes are stored in json folder under '/json/tags.json'.
+- amend_html():
+    Parses cleaned html content from docx, running replacements to correct headings.
+    Heading substitutes are stored in json folder under '/json/subs.json'.
+    Also contains the award code variable for inserting in `<img src""/>`.
+- write_html():
+    Outputs cleaned and amended html content to specified file name.
+    Pass in file name and html contents.
     '''
+    SUBS = load_json('json', 'subs.json')
+    TAGS = load_json('json', 'tags.json')
+
     # document = sys.argv[1]
     # document = 'test/.docx'
     document = 'test/test.html'
 
     if '.docx' in document:
+        # extract_docx_images(document)
         contents = convert_docx(document)
     elif document.endswith('.html'):
         with open(document, encoding='utf-8') as f:
             contents = f.read()
-
-    cleaned = bleachclean(contents)
-    htmlcontent = htmlparse(cleaned)#.prettify()
+    
+    cleaned = clean_html(contents)
+    htmlcontent = amend_html(cleaned)#.prettify()
 
     outfile = 'test/cleaned.html'
-    write_final(outfile, str(htmlcontent))
+    write_html(outfile, str(htmlcontent))
 
 if __name__ == '__main__':
     main()
