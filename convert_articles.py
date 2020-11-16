@@ -34,7 +34,7 @@ def rename_docx_images(path, IMGS):
     '''
     print('\n# renaming images...\n')
     try:
-        files = {p.resolve() for p in path.glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif"]}
+        files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif"]}
         for f in nat(files):
             ID = f.parent.parent.name # to get /<ID> rather than /media
             name = f.stem
@@ -45,7 +45,7 @@ def rename_docx_images(path, IMGS):
             fn = f"{ID}{n}{ext}"
             fp = path / fn
             f.rename(fp)
-            IMGS.update({f.name: f"/content/{AWARD_CODE}/{fn}"})
+            IMGS.update({f.name: f"/fulltext/{AWARD_CODE}/images/{fn}"})
             print(f'"{f.name}" --> {fn}')
 
         print(f"\n# renamed: {len(files)} images\n")
@@ -160,12 +160,9 @@ def main():
     '''
     SUBS = load_json('json_pkg/subs.json')
     TAGS = load_json('json_pkg/tags.json')
-
-    # doc = sys.argv[1]
+    # doc = Path(sys.argv[1])
     doc = Path('test/131412.docx')
-    # doc = 'test/test.html'
     IMGS = {} # have this as global variable in class __init__
-
     if doc.suffix == '.docx':
         # extract_docx_images(doc)
         contents, media = convert_docx(doc)
@@ -175,8 +172,6 @@ def main():
             contents = f.read()
     cleaned = clean_html(contents, TAGS)
     htmlcontent = amend_html(cleaned, IMGS)#.prettify()
-
-    # outfile = 'test/cleaned.html'
     outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.html")
     write_html(outfile, str(htmlcontent))
 
