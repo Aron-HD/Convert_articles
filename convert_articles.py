@@ -1,18 +1,12 @@
 #! /usr/bin/env python
+import pypandoc, bleach, sys, json
 from bs4 import BeautifulSoup as Soup
+from natsort import natsorted as nat
 from pathlib import Path
-# from glob import glob
-import importlib.resources, pypandoc, bleach, sys, json
+from glob import glob
 
 # pass in award / if award in subs.key JSON
-AWARD_CODE = 'WARC-AWARDS-MEDIA'
-
-# get these images written to JSON dict and pased in
-imgs = {
-    "media/image1.jpg": f"/content/{AWARD_CODE}/133341f01",
-    "media/image2.jpg": f"/content/{AWARD_CODE}/133341f02",
-    "media/image3.jpg": f"/content/{AWARD_CODE}/133341f03"
-}
+AWARD_CODE = 'WARC-AWARDS'
 
 def load_json(file):
     '''
@@ -29,18 +23,38 @@ def convert_docx(file):
     '''
     Uses the pypandoc module to convert docx file to html content for parsing.
     '''
-    ID = file.parent / file.stem
-    print(ID)
-    contents = pypandoc.convert_file(str(file), 'html5', extra_args=[f'--extract-media={ID}'])
-    return contents
+    media = file.parent / file.stem
+    contents = pypandoc.convert_file(str(file), 'html5', extra_args=[f'--extract-media={media}']) # find a way to extract to same folder rather than 'ID/media'
+    return contents, media
 
-def rename_docx_images(file):
+def rename_docx_images(path, IMGS):
     '''
     Rename extracted images.
-    Returns old img path and new img filename in a json for subtitution in html.
+    Returns old img path and new img filename in a dict for subtitution in html.
     '''
-    pass
-    return IMGS
+    
+    print('\n# renaming images...\n')
+    try:
+        files = {p.resolve() for p in path.glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif"]}
+        for f in nat(files):
+            ID = f.parent.parent.name # to get /<ID> rather than /media
+            name = f.stem
+            ext = f.suffix
+            nums = [i for i in list(name) if i.isdigit()]
+            num = ''.join(nums)
+            n = "f" + num.zfill(2) 
+            fn = f"{ID}{n}{ext}"
+            fp = path / fn
+            f.rename(fp)
+            IMGS.update({f.name: f"/content/{AWARD_CODE}/{fn}"})
+            print(f'"{f.name}" --> {fn}')
+
+        print(f"\n# renamed: {len(files)} images\n")
+        return IMGS
+    except Exception as e:
+        raise e
+    # else:
+    #     print('no images to rename')
 
 def clean_html(content, TAGS):
     '''
@@ -54,7 +68,7 @@ def clean_html(content, TAGS):
     )
     return cleaned
 
-def amend_html(content):
+def amend_html(content, IMGS):
     '''
     Parses cleaned html content from docx, running replacements to correct headings.
     Heading substitutes are stored in json folder under '/json/subs.json'.
@@ -68,10 +82,12 @@ def amend_html(content):
         for i in images:
             if i:
                 src = i['src']
-                for k, v in imgs.items():
+                for k, v in IMGS.items(): # self.IMGS when class
                     if k in src:
-                        i['src'] = src.replace(k, v)
+                        i['src'] = src.replace(src, v)
                         print(f'<img src="{k}"> --> <img src="{v}">')
+            else:
+                print('no images...')
     else:
         print('no images...')
     # replacements for titles.
@@ -149,16 +165,17 @@ def main():
     # doc = sys.argv[1]
     doc = Path('test/131412.docx')
     # doc = 'test/test.html'
+    IMGS = {} # have this as global variable in class __init__
 
     if doc.suffix == '.docx':
         # extract_docx_images(doc)
-        contents = convert_docx(doc)
+        contents, media = convert_docx(doc)
+        IMGS = rename_docx_images(media, IMGS)
     elif doc.suffix == '.html':
         with open(doc, encoding='utf-8') as f:
             contents = f.read()
-    
     cleaned = clean_html(contents, TAGS)
-    htmlcontent = amend_html(cleaned).prettify()
+    htmlcontent = amend_html(cleaned, IMGS)#.prettify()
 
     # outfile = 'test/cleaned.html'
     outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.html")
