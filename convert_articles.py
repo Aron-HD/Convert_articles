@@ -32,7 +32,6 @@ def rename_docx_images(path, IMGS):
     Rename extracted images.
     Returns old img path and new img filename in a dict for subtitution in html.
     '''
-    
     print('\n# renaming images...\n')
     try:
         files = {p.resolve() for p in path.glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif"]}

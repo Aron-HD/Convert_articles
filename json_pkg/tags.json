@@ -7,7 +7,7 @@
 	"attrs": {
 	    "a": ["href"],
 	    "img": ["src","alt"],
-	    "ul": ["start", "type"],
-	    "ol": ["start", "type"]
+	    "ul": ["start"],
+	    "ol": ["start"]
     }
 }
