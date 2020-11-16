@@ -7,7 +7,18 @@ A new development for automating the conversion of edited docx content to html a
 
 Considering nesting these functions under an Article class.
 
-## Docs
+### ToDo
+
+- sub h5 - h3 titles.
+- nest under an Article class
+- ensure imgs are in their own p tags
+- regex matching for h3 titles to be more exact / account for spaces at line endings etc (or could strip()).
+- add requirements.txt / pip.lock to make it standalone
+- add logging
+- add file verification for sys.arv[1]
+- add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`
+
+# Docs
 
 ##### INSTRUCTIONS
 
