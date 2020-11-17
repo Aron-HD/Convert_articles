@@ -19,12 +19,16 @@ def load_json(file):
     except Exception:
         raise
 
-def convert_docx(file):
+def convert_docx(file, extract_media=True):
     '''
-    Uses the pypandoc module to convert docx file to html content for parsing.
+    Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
     '''
     media = file.parent / file.stem
-    contents = pypandoc.convert_file(str(file), 'html5', extra_args=[f'--extract-media={media}']) # find a way to extract to same folder rather than 'ID/media'
+    if extract_media:
+        extra_args = [f'--extract-media={media}']
+    else:
+        extra_args = []
+    contents = pypandoc.convert_file(str(file), 'html5', extra_args=extra_args) # find a way to extract to same folder rather than 'ID/media'
     return contents, media
 
 def rename_docx_images(path, IMGS):
@@ -117,8 +121,11 @@ def amend_html(content, IMGS):
         if h5:
             h5.strong.unwrap()
             print('<h5><strong> -->', h5)
-        else:
-            pass
+
+    for li in tree.find_all('li'):
+        if li:
+            li.p.unwrap()
+            print('<li><p> -->', li)
 
     # do final h3 changes to relevant award headers
 
@@ -172,7 +179,7 @@ def main():
             contents = f.read()
     cleaned = clean_html(contents, TAGS)
     htmlcontent = amend_html(cleaned, IMGS)#.prettify()
-    outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.html")
+    outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.htm")
     write_html(outfile, str(htmlcontent))
 
 if __name__ == '__main__':
