@@ -1,0 +1,13 @@
+{	
+	"tags": [
+	    "img","h1","h2", "h3","h4","h5","br",
+	    "b", "strong", "em", "i", "u", "a", "p",
+	    "ul", "li", "ol", "sup"
+	],
+	"attrs": {
+	    "a": ["href"],
+	    "img": ["src"],
+	    "ul": ["start"],
+	    "ol": ["start"]
+    }
+}
