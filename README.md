@@ -5,18 +5,19 @@ A new development for automating the conversion of edited docx content to html a
 - **Goal:** direct cost savings for my company and reduced production time for web articles (case studies).
 - We currently send this content to India and pay for a company to convert the files to html and extract all images. We then have to wait around a week for this to be completed before the article assets can be uploaded to our CMS and published as articles on our website.
 
-Considering nesting these functions under an Article class.
+Considering nesting these functions under an Article class, and splitting html parsing to a utils folder to keep tidy.
 
 ### ToDo
 
-- sub h5 - h3 titles.
+- sub h5 - h3 titles. (also run a check to see if any are missing)
 - nest under an Article class
-- ensure imgs are in their own p tags
+~~- ensure imgs are in their own p tags~~
 - regex matching for h3 titles to be more exact / account for spaces at line endings etc (or could strip()).
 - add requirements.txt / pip.lock to make it standalone
 - add logging
 - add file verification for sys.arv[1]
-- add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`
+~~- add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`~~
+- remove /media folder in output path
 
 # Docs
 
