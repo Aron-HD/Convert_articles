@@ -24,6 +24,10 @@ def convert_docx(file, extract_media=True):
     Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
     '''
     media = file.parent / file.stem
+    try:
+        media.mkdir(exist_ok=False)
+    except FileExistsError as e:
+        lgr.error(e)
     if extract_media:
         extra_args = [f'--extract-media={media}']
     else:
@@ -177,7 +181,7 @@ def main():
     SUBS = load_json('json_pkg/subs.json')
     TAGS = load_json('json_pkg/tags.json')
     # doc = Path(sys.argv[1])
-    doc = Path('test/131412.docx')
+    doc = Path('test/131485.docx')
     IMGS = {} # have this as global variable in class __init__
     if doc.suffix == '.docx':
         # extract_docx_images(doc)
@@ -187,7 +191,7 @@ def main():
         with open(doc, encoding='utf-8') as f:
             contents = f.read()
     cleaned = clean_html(contents, TAGS)
-    htmlcontent = amend_html(cleaned, IMGS).prettify()
+    htmlcontent = amend_html(cleaned, IMGS)#.prettify()
     outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.htm")
     write_html(outfile, str(htmlcontent))
 
