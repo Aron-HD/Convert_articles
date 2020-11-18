@@ -82,15 +82,24 @@ def amend_html(content, IMGS):
     # replace the source attribute to renamed image
     images = tree.find_all('img')
     if images:
-        for i in images:
-            if i:
-                src = i['src']
-                for k, v in IMGS.items(): # self.IMGS when class
-                    if k in src:
-                        i['src'] = src.replace(src, v)
-                        print(f'<img src="{k}"> --> <img src="{v}">')
-            else:
-                print('no images...')
+        for ig in images:
+            src = ig['src']
+            for k, v in IMGS.items(): # self.IMGS when class
+                if k in src:
+                    ig['src'] = src.replace(src, v)
+                    print(f'<img src="{k}"> --> <img src="{v}">')
+        if ig.parent.name == 'p':
+            prt = ig.parent
+            prt.insert_before('\n')
+            prt.insert_after(ig) # insert all images outside of p tag to wrap them properly in p tags.
+            ig.wrap(tree.new_tag('p')) # wrap all imgs in p tags
+            if len(prt.get_text(strip=True)) == 0: # strip whitespace
+                print('cut', prt)
+                prt.unwrap() # remove p tag if empty
+            ig.insert_before('\n')
+        else:
+            ig.wrap(tree.new_tag('p'))
+        print('wrapped', ig)
     else:
         print('no images...')
     # replacements for titles.
@@ -108,24 +117,23 @@ def amend_html(content, IMGS):
         print('no headers to replace...')
     # match all p tags with bold and check punctuation
     # endings to filter bold sentences from subheadings in h5
-    pstrongs = tree.find_all('p')
-    for p in pstrongs:
-        if p.find('strong'):
-            if p.text.endswith((".",",",":",";")):
-                pass
-            else:
-                p.name = 'h5'
-                print('<p><strong> -->', p)
-
-    for h5 in tree.find_all('h5'):
-        if h5:
-            h5.strong.unwrap()
-            print('<h5><strong> -->', h5)
-
-    for li in tree.find_all('li'):
-        if li:
-            li.p.unwrap()
-            print('<li><p> -->', li)
+    try:
+        print('changing subheaders')
+        paras = tree.find_all('p')
+        for p in paras:
+            if p.find('strong'):
+                if p.text.endswith((".",",",":",";")):
+                    pass
+                else:
+                    p.strong.unwrap()
+                    p.name = 'h5'
+                    print('<p><strong> -->', p)
+        for li in tree.find_all('li'):
+            if li.find('p'):
+                li.p.unwrap()
+                print('<li><p> -->', li)
+    except AttributeError as e:
+        print(e)
 
     # do final h3 changes to relevant award headers
 
@@ -178,7 +186,7 @@ def main():
         with open(doc, encoding='utf-8') as f:
             contents = f.read()
     cleaned = clean_html(contents, TAGS)
-    htmlcontent = amend_html(cleaned, IMGS)#.prettify()
+    htmlcontent = amend_html(cleaned, IMGS).prettify()
     outfile = Path(f"{doc.parent}/{doc.stem}/{doc.stem}.htm")
     write_html(outfile, str(htmlcontent))
 
