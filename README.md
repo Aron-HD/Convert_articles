@@ -10,50 +10,67 @@ Considering nesting these functions under an Article class, and splitting html p
 ### ToDo
 
 - sub h5 - h3 titles. (also run a check to see if any are missing)
-- nest under an Article class
+~~- nest under an Article class~~
 ~~- ensure imgs are in their own p tags~~
 - regex matching for h3 titles to be more exact / account for spaces at line endings etc (or could strip()).
 - add requirements.txt / pip.lock to make it standalone
-- add logging
+~~- add logging~~
 - add file verification for sys.arv[1]
 ~~- add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`~~
 - remove /media folder in output path
 
 # Docs
 
-##### INSTRUCTIONS
+# INSTRUCTIONS
 
-- If running from command line: 
-- `./convert_articles.py <file_you_want_to_convert>`
+If running from command line: `./convert_articles.py <file_you_want_to_convert> <award_scheme>`
 
-##### FUNCTIONS
+- e.g. `./convert_articles.py "test/131485.docx" "warc"`
 
-- extract_docx_images():
+# MAIN FUNCTIONS
 
-Runs bash shell script to unzip and rename images.
-Returns old img path and new img filename in a json for subtitution in html.
+- log_setup():
+
+Makes log directory and sets logger file. Uses 'log' for main app, lgr1 for Article Class.
+
+- load_infile():
+
+Runs validation on file input by sys.argv[1].
+
+- load_award():
+
+Runs validation on award input by sys.argv[2] to return correct award code from SUBS json.    
+
+- load_json():
+
+Loads data from the specified json file.
+
+# ARTICLE CLASS
+
+Arguments:
+
+- IN_FILE: specify docx or html file.
+- TAGS: specify tags and attributes for bleach module in json file.
+- SUBS: specify substitutions for h3 headings in html.
+
+# CLASS FUNCTIONS
 
 - convert_docx(): 
 
 Uses the pypandoc module to convert docx file to html content for parsing.    
 
-- load_json():
+- rename_docx_images():
 
-Loads data from the specified json file.
-Must give both arguments: <folder path>, <file>.
+Rename extracted images. Returns old img path and new img filename in a json for subtitution in html.
 
 - clean_html():
 
-Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
-Tags and attributes are stored in json folder under '/json/tags.json'.
+Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags. Tags and attributes are stored in json folder under '/JSON/tags.json'.
 
 - amend_html():
 
-Parses cleaned html content from docx, running replacements to correct headings.
-Heading substitutes are stored in json folder under '/json/subs.json'.
-Also contains the award code variable for inserting in `<img src""/>`.
+Parses cleaned html content from docx, running replacements to correct headings. Heading substitutes are stored in json folder under '/JSON/subs.json'. Also contains the award code variable for inserting in `<img src""/>`.
 
 - write_html():
 
-Outputs cleaned and amended html content to specified file name.
-Pass in file name and html contents.
+Outputs cleaned and amended html content to specified file name. Pass in file name and html contents.
