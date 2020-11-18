@@ -77,9 +77,13 @@ def amend_html(content, IMGS):
     Heading substitutes are stored in json folder under '/json/subs.json'.
     Also contains the award code variable for inserting in <img src""/>.
     '''
+    def wrap_img(ig):
+        '''Wraps img in p tags.'''
+        ig.wrap(tree.new_tag('p'))
+        print('wrapped', ig)
+        
     tree = Soup(content, "html.parser")
-    # find all images, if images exist,
-    # replace the source attribute to renamed image
+    # find all images, if images exist, replace the source attribute to renamed image
     images = tree.find_all('img')
     if images:
         for ig in images:
@@ -92,31 +96,28 @@ def amend_html(content, IMGS):
             prt = ig.parent
             prt.insert_before('\n')
             prt.insert_after(ig) # insert all images outside of p tag to wrap them properly in p tags.
-            ig.wrap(tree.new_tag('p')) # wrap all imgs in p tags
-            if len(prt.get_text(strip=True)) == 0: # strip whitespace
+            wrap_img(ig)
+             # strip whitespace and remove p tag if empty
+            if len(prt.get_text(strip=True)) == 0: 
                 print('cut', prt)
-                prt.unwrap() # remove p tag if empty
+                prt.unwrap()
             ig.insert_before('\n')
         else:
-            ig.wrap(tree.new_tag('p'))
-        print('wrapped', ig)
+            wrap_img(ig)
     else:
         print('no images...')
-    # replacements for titles.
-    # for header in headers
-    # if end with fullstop or punctuation make them <p><strong>
-    # else if they
+
+    # make all headers <p><strong>
     headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
-    if headers:
+    if not headers:
+        print('no headers to replace...')
+    else:
         for hdr in headers:
             if hdr:
                 hdr.string.wrap(tree.new_tag('strong'))
                 hdr.name = 'p'
                 print('header -->', hdr)
-    else:
-        print('no headers to replace...')
-    # match all p tags with bold and check punctuation
-    # endings to filter bold sentences from subheadings in h5
+    # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
     try:
         print('changing subheaders')
         paras = tree.find_all('p')
