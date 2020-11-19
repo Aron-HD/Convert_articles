@@ -30,5 +30,12 @@
       "execution": "<h3>Implementation and optimisation</h3>",
       "results": "<h3>Measurement approach and results</h3>",
       "code": "/WARC-AWARDS-MEDIA"
+   },
+   "All": {
+      "exec": "<h3>Executive summary</h3>",
+      "lessons": "<h3>Lessons learned</h3>",
+      "ROI": "<h3>ROI</h3>",
+      "sources": "<h3>Sources</h3>",
+      "footnotes": "<h3>Footnotes</h3>"
    }
 }
