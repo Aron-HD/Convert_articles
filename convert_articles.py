@@ -35,7 +35,7 @@ def log_setup(first_log, second_log):
     return lgr1, lgr2
 
 lgr1, lgr2 = log_setup(first_log='ArticleClass',
-                       second_log='Undefined')
+                       second_log='amend_html')
 
 class Article(object):
     '''
@@ -54,6 +54,7 @@ class Article(object):
         self.IMGS = {}
         self.MEDIA_PATH = IN_FILE.parent / IN_FILE.stem
         self.CONTENT = None
+        self.AWARD = AWARD
         self.AWARD_CODE = SUBS[AWARD]['code']
         try:
             self.MEDIA_PATH.mkdir(exist_ok=False)
@@ -81,8 +82,8 @@ class Article(object):
             lgr1.info('no images to rename')
         else:
             try:
-                lgr1.info('\n# renaming images...\n')
-                files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif"]}
+                lgr1.info('renaming images...')
+                files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf"]}
                 for f in nat(files):
                     ID = f.parent.parent.name # to get /<ID> rather than /media
                     name = f.stem
@@ -95,22 +96,26 @@ class Article(object):
                     f.rename(fp)
                     self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
                     lgr1.info(f'"{f.name}" --> {fn}')
-                lgr1.info(f"\n# renamed: {len(files)} images\n")
-            except Exception as e:
-                lgr1.error('error while renaming files:', e)
+                lgr1.info(f"renamed: {len(files)} images")
+            except FileExistsError as e:
+                lgr1.warning(f'error while renaming files: {e}')
+                print(e)
+                pass
 
     def clean_html(self):
         '''
         Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
         Tags and attributes are stored in json folder under '/json/tags.json'.
         '''
+        attrs = self.TAGS['attrs']
+        tags = self.TAGS['tags']
         self.CONTENT = bleach.clean(
             self.CONTENT,
-            attributes=self.TAGS['attrs'],
-            tags=self.TAGS['tags'],
+            attributes=attrs,
+            tags=tags,
             strip=True
         )
-        # return cleaned
+        lgr1.info('cleaned html')
 
     def amend_html(self):
         '''
@@ -118,69 +123,83 @@ class Article(object):
         Heading substitutes are stored in json folder under '/json/subs.json'.
         Also contains the award code variable for inserting in <img src""/>.
         '''
+        tree = Soup(self.CONTENT, "html.parser")
+
         def wrap_img(ig):
             '''Wraps img in p tags.'''
             ig.wrap(tree.new_tag('p'))
-            lgr1.info(f'wrapped: {ig}')
-            
-        tree = Soup(self.CONTENT, "html.parser")
-        # find all images, if images exist, replace the source attribute to renamed image
-        images = tree.find_all('img')
-        if images:
-            for ig in images:
-                src = ig['src']
-                for k, v in self.IMGS.items(): # self.IMGS when class
-                    if k in src:
-                        ig['src'] = src.replace(src, v)
-                        lgr1.info(f'<img src="{k}"> --> <img src="{v}">')
-            if ig.parent.name == 'p':
-                prt = ig.parent
-                prt.insert_before('\n')
-                prt.insert_after(ig) # insert all images outside of p tag to wrap them properly in p tags.
-                wrap_img(ig)
-                 # strip whitespace and remove p tag if empty
-                if len(prt.get_text(strip=True)) == 0: 
-                    lgr1.info(f'cut {prt}')
-                    prt.unwrap()
-                ig.insert_before('\n')
-            else:
-                wrap_img(ig)
-        else:
-            lgr1.info('no images...')
+            lgr2.info(f'wrapped: {ig}')
 
-        # make all headers <p><strong>
-        headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
-        if not headers:
-            lgr1.info('no headers to replace...')
-        else:
-            for hdr in headers:
-                if hdr:
-                    hdr.string.wrap(tree.new_tag('strong'))
-                    hdr.name = 'p'
-                    lgr1.info(f'header --> {hdr}')
-        # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
-        try:
-            lgr1.info('changing subheaders')
+        def html_images():
+            '''If images exist, replace the source attribute to renamed image and ensre wrapped in <p> tags.'''
+            images = tree.find_all('img')
+            if images:
+                for ig in images:
+                    src = ig['src']
+                    for k, v in self.IMGS.items(): # self.IMGS when class
+                        if k in src:
+                            ig['src'] = src.replace(src, v)
+                            lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
+                if ig.parent.name == 'p':
+                    prt = ig.parent
+                    prt.insert_before('\n')
+                    prt.insert_after(ig) # insert all images outside of p tag to wrap them properly in p tags.
+                    wrap_img(ig)
+                     # strip whitespace and remove p tag if empty
+                    if len(prt.get_text(strip=True)) == 0: 
+                        lgr2.info(f'cut {prt}')
+                        prt.unwrap()
+                    ig.insert_before('\n')
+                else:
+                    wrap_img(ig)
+            else:
+                lgr2.info('no images...')
+
+        def html_headers_unify():
+            '''Makes all headers <p><strong>.'''
+            headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
+            if not headers:
+                lgr2.info('no headers to replace...')
+            else:
+                for hdr in headers:
+                    if hdr:
+                        hdr.string.wrap(tree.new_tag('strong'))
+                        hdr.name = 'p'
+                        lgr2.info(f'header --> {hdr}')
+                # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
+            lgr2.info('changing subheaders')
             paras = tree.find_all('p')
             for p in paras:
                 if p.find('strong'):
-                    if p.text.endswith((".",",",":",";")):
+                    if p.text.endswith((".",",",":",";","?")):
                         pass
                     else:
                         p.strong.unwrap()
                         p.name = 'h5'
-                        lgr1.info(f'<p><strong> --> {p}')
+                        lgr2.info(f'<p><strong> --> {p}')
+
+        def html_headers_replace():
+            '''Runs replacements on headers.'''
+            replace = {                                             # merge award specific headers
+                **self.SUBS[self.AWARD],                                 # with generic headers
+                **self.SUBS['All']
+            }
+            h5s = tree.find_all('h5')          
+            for h5 in h5s:
+                for k, v in replace.items():        
+                    if h5.text.casefold().strip() in v.casefold():
+                        h5.name = 'h3'
+                        lgr2.info(f'<h5> --> {h5}')
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
-                    # lgr1.info(f'<li><p> --> {li}') # unicode error printing these in logs
+                    # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
                     print(f'<li><p> --> {li}')
-        except AttributeError as e:
-            lgr1.info(e)
 
-        # do final h3 changes to relevant award headers
+        html_images()
+        html_headers_unify()
+        html_headers_replace()
         self.CONTENT = tree
-        # return tree
 
     def write_html(self):
         '''
@@ -264,12 +283,13 @@ def main():
     Pass in file name and html contents.
     '''
     try:
-        # infile = 'test/131478.docx'
-        infile = load_infile(sys.argv[1])
-        award = load_award(sys.argv[2])
-        lgr.info(f'IN_FILE -> {infile}')
-        lgr.info(f'award -> {award}')
-        TAGS = load_json('JSON/tags.json'), 
+        infile = 'test/131470.docx'
+        award = 'WARC Awards'
+        # infile = load_infile(sys.argv[1])
+        # award = load_award(sys.argv[2])
+        log.info(f'IN_FILE -> {infile}')
+        log.info(f'award -> {award}')
+        TAGS = load_json('JSON/tags.json') 
         SUBS = load_json('JSON/subs.json')
         doc = Path(infile)
         Art = Article(
@@ -288,8 +308,11 @@ def main():
         Art.amend_html()#.prettify()
         Art.write_html()
 
+    except AttributeError as e:
+        lgr1.warning(e)
     except Exception as e:
         log.error(e)
+        raise e
 
 if __name__ == '__main__':
     main()
