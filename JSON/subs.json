@@ -5,7 +5,7 @@
       "insight": "<h3>Insight and strategic thinking</h3>",
       "execution": "<h3>Implementation, including creative and media development</h3>",
       "results": "<h3>Performance against objectives</h3>",
-      "code": "/WARC-AWARDS"
+      "code": "WARC-AWARDS"
    },
    "MENA Prize": {
       "market": "<h3>Market background and cultural context</h3>",
@@ -13,7 +13,7 @@
       "insight": "<h3>Insight and strategic thinking</h3>",
       "execution": "<h3>Creative and/or channel execution</h3>",
       "results": "<h3>Performance against objectives</h3>",
-      "code": "/WARC-PRIZE-MENA"
+      "code": "WARC-PRIZE-MENA"
    },
    "Asia Prize": {
       "market": "<h3>Market background and cultural context</h3>",
@@ -21,7 +21,7 @@
       "insight": "<h3>Insight and strategic thinking</h3>",
       "execution": "<h3>Creative and/or channel execution</h3>",
       "results": "<h3>Performance against objectives</h3>",
-      "code": "/WARC-PRIZE-ASIA"
+      "code": "WARC-PRIZE-ASIA"
    },
    "Media Awards": {
       "market": "<h3>Market background and context</h3>",
@@ -29,7 +29,7 @@
       "insight": "<h3>Insights and strategy</h3>",
       "execution": "<h3>Implementation and optimisation</h3>",
       "results": "<h3>Measurement approach and results</h3>",
-      "code": "/WARC-AWARDS-MEDIA"
+      "code": "WARC-AWARDS-MEDIA"
    },
    "All": {
       "exec": "<h3>Executive summary</h3>",
