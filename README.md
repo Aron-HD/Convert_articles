@@ -17,10 +17,14 @@ Considering splitting html parsing to a utils folder to keep tidy.
 - regex matching for h3 titles to be more exact / account for spaces at line endings etc (or could strip()).
 - add requirements.txt / pip.lock to make it standalone
 - ~~add logging~~
-- add file verification for sys.arv[1]
+- ~~add file verification for sys.arv[1]~~
 - ~~add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`~~
 - remove /media folder in output path
 - add warning for .emf files and tables / charts
+- split hmtl amending to separate package
+- use pyinstaller to make exe
+- allow directories as well as single docx files so doesn't start script new everytime and create new log.
+- use colour on warnings and flags for file or dir through click cli
 
 # Docs
 
