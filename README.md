@@ -20,6 +20,7 @@ Considering splitting html parsing to a utils folder to keep tidy.
 - add file verification for sys.arv[1]
 - ~~add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`~~
 - remove /media folder in output path
+- add warning for .emf files and tables / charts
 
 # Docs
 
