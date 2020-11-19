@@ -60,7 +60,7 @@ class Article(object):
             self.MEDIA_PATH.mkdir(exist_ok=False)
             lgr1.info(f'made dir: {self.MEDIA_PATH}')
         except FileExistsError as e:
-            lgr1.debug(e)
+            lgr1.debug(f'dir exists: {self.MEDIA_PATH}')
         
     def convert_docx(self, extract_media=True):
         '''
@@ -81,26 +81,28 @@ class Article(object):
         if not path:
             lgr1.info('no images to rename')
         else:
-            try:
-                lgr1.info('renaming images...')
-                files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf"]}
-                for f in nat(files):
-                    ID = f.parent.parent.name # to get /<ID> rather than /media
-                    name = f.stem
-                    ext = f.suffix
-                    nums = [i for i in list(name) if i.isdigit()]
-                    num = ''.join(nums)
-                    n = "f" + num.zfill(2) 
-                    fn = f"{ID}{n}{ext}"
-                    fp = path / fn
-                    f.rename(fp)
+            lgr1.info('renaming images...')
+            files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf"]}
+            for f in nat(files):
+                ID = f.parent.parent.name # to get /<ID> rather than /media
+                name = f.stem
+                ext = f.suffix
+                nums = [i for i in list(name) if i.isdigit()]
+                num = ''.join(nums)
+                n = "f" + num.zfill(2) 
+                fn = f"{ID}{n}{ext}"
+                fp = path / fn
+                if f.parent.name == 'media':
+                    try:
+                        f.rename(fp)
+                        lgr1.info(f'"{f.name}" --> {fn}')
+                        self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
+                    except FileExistsError as e:                                            # catch renaming files that are already there
+                        lgr1.warning(f'img exists already: {f}')
+                else:
                     self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
-                    lgr1.info(f'"{f.name}" --> {fn}')
-                lgr1.info(f"renamed: {len(files)} images")
-            except FileExistsError as e:
-                lgr1.warning(f'error while renaming files: {e}')
-                print(e)
-                pass
+            lgr1.debug(f'{self.IMGS}')
+            lgr1.info(f"renamed: {len(files)} images")
 
     def clean_html(self):
         '''
@@ -128,30 +130,47 @@ class Article(object):
         def wrap_img(ig):
             '''Wraps img in p tags.'''
             ig.wrap(tree.new_tag('p'))
-            lgr2.info(f'wrapped: {ig}')
+            lgr2.info(f'wrapped ^^^')
+
+        def space_tag(tag):
+            '''Spaces a tag with newlines before and after.'''
+            try:
+                tag.insert_before('\n')                      
+                tag.insert_after('\n')
+            except NotImplementedError as e:
+                lgr2.warning(f"couldn't space tag: {tag}")
 
         def html_images():
             '''If images exist, replace the source attribute to renamed image and ensre wrapped in <p> tags.'''
             images = tree.find_all('img')
+            lgr2.debug(f"article images: {images}")
             if images:
                 for ig in images:
-                    src = ig['src']
-                    for k, v in self.IMGS.items(): # self.IMGS when class
-                        if k in src:
-                            ig['src'] = src.replace(src, v)
-                            lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
-                if ig.parent.name == 'p':
-                    prt = ig.parent
-                    prt.insert_before('\n')
-                    prt.insert_after(ig) # insert all images outside of p tag to wrap them properly in p tags.
-                    wrap_img(ig)
-                     # strip whitespace and remove p tag if empty
-                    if len(prt.get_text(strip=True)) == 0: 
-                        lgr2.info(f'cut {prt}')
-                        prt.unwrap()
-                    ig.insert_before('\n')
-                else:
-                    wrap_img(ig)
+                    try:
+                        src = ig['src']
+                        for k, v in self.IMGS.items():
+                            if k in src:
+                                ig['src'] = src.replace(src, v)
+                                lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
+                    except KeyError as e:
+                        lgr2.warning('img caught key error')
+                        lgr2.debug(e)
+                    try:
+                        prt = ig.parent
+                        if ig.parent.name == 'p':
+                            space_tag(prt)
+                            prt.insert_after(ig)                                # insert all images outside of p tag to wrap them properly in p tags.
+                            wrap_img(ig)
+                            if len(prt.get_text(strip=True)) == 0:              # strip whitespace and remove p tag if empty
+                                prt.unwrap()
+                                lgr2.info(f'cut {prt}')
+                            # space_tag(ig)
+                        else:
+                            space_tag(ig)
+                            wrap_img(ig)
+                    except ValueError as e:
+                        lgr2.warning('img caught value error')
+                        lgr2.debug(e)
             else:
                 lgr2.info('no images...')
 
@@ -159,46 +178,50 @@ class Article(object):
             '''Makes all headers <p><strong>.'''
             headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
             if not headers:
-                lgr2.info('no headers to replace...')
+                lgr2.info('no header tags to replace...')
             else:
                 for hdr in headers:
                     if hdr:
                         hdr.string.wrap(tree.new_tag('strong'))
                         hdr.name = 'p'
-                        lgr2.info(f'header --> {hdr}')
-                # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
-            lgr2.info('changing subheaders')
+                        lgr2.debug(f'header --> {hdr}')
+            # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
+            lgr2.info('changing all subheadings to h5...')
             paras = tree.find_all('p')
             for p in paras:
                 if p.find('strong'):
-                    if p.text.endswith((".",",",":",";","?")):
+                    if p.text.endswith((".",",",":",";","?")):      # regex this
                         pass
                     else:
                         p.strong.unwrap()
                         p.name = 'h5'
-                        lgr2.info(f'<p><strong> --> {p}')
+                        lgr2.debug(f'<p><strong> --> {p}')
 
         def html_headers_replace():
             '''Runs replacements on headers.'''
             replace = {                                             # merge award specific headers
-                **self.SUBS[self.AWARD],                                 # with generic headers
+                **self.SUBS[self.AWARD],                            # with generic headers
                 **self.SUBS['All']
             }
+            lgr2.info('changing award subheadings to h3...')
             h5s = tree.find_all('h5')          
             for h5 in h5s:
+                space_tag(h5)
                 for k, v in replace.items():        
                     if h5.text.casefold().strip() in v.casefold():
                         h5.name = 'h3'
-                        lgr2.info(f'<h5> --> {h5}')
+                        lgr2.debug(f'<h5> --> {h5}')
+            
+        def html_lists():
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
                     # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
-                    print(f'<li><p> --> {li}')
 
         html_images()
         html_headers_unify()
         html_headers_replace()
+        html_lists()
         self.CONTENT = tree
 
     def write_html(self):
@@ -215,15 +238,29 @@ def load_infile(infile):
     '''
     Runs validation on file input by sys.argv[1].
     '''
-    log.debug(f'infile argument: {infile}')
-    return infile
+    f = Path(infile)
+    log.debug(f'infile argument: {f}')
+    if f.is_file():
+        log.info(f'file -> {f}')
+        return f
+    else:
+        log.warning(f'{f} not a valid file')
+        raise SystemExit
 
-def load_award(award):
+def load_award(a, SUBS):
     '''
     Runs validation on award input by sys.argv[2] to return correct award code from SUBS json.
     '''
-    log.debug(f'award argument: {award}')
-    return award
+    log.debug(f'award argument: {a}')
+    keys = [*SUBS.keys()]                                           # unpacks keys into list                 
+    keys.remove('All')                                              # keep only award sections of subs.json    
+    for k in filter(lambda k: a.casefold() in k.casefold(), keys):  # casefold to match case
+        award = k
+        log.info(f'award -> {award}')
+        return award
+    else:
+        log.warning(f'{a} not a valid award')
+        raise SystemExit
 
 def load_json(file):
     '''
@@ -283,26 +320,28 @@ def main():
     Pass in file name and html contents.
     '''
     try:
-        infile = 'test/131470.docx'
-        award = 'WARC Awards'
-        # infile = load_infile(sys.argv[1])
-        # award = load_award(sys.argv[2])
-        log.info(f'IN_FILE -> {infile}')
-        log.info(f'award -> {award}')
         TAGS = load_json('JSON/tags.json') 
         SUBS = load_json('JSON/subs.json')
-        doc = Path(infile)
+        try:
+            infile = load_infile(sys.argv[1])
+            award = load_award(a=sys.argv[2], SUBS=SUBS)
+        except IndexError as e:
+            log.debug('no sys args')
+            infile = "test/131412.docx"#"c:/Users/arondavidson/OneDrive - Ascential/Desktop/Murkies WPA&WMA/Aron WARC Awards/131412.docx"##input('path to file: # e.g. "test/131470.docx"\n')
+            award = input('award: # e.g. "warc" "mena" "asia" "media"\n')
+            infile = load_infile(infile=infile)
+            award = load_award(a=award, SUBS=SUBS)
         Art = Article(
-            IN_FILE=doc,
+            IN_FILE=infile,
             TAGS=TAGS, 
             SUBS=SUBS,
             AWARD=award
         )
-        if doc.suffix == '.docx':
+        if infile.suffix == '.docx':
             Art.convert_docx(extract_media=True)
             Art.rename_docx_images()
-        elif doc.suffix == '.html':
-            with open(doc, encoding='utf-8') as f:
+        elif infile.suffix == '.html':
+            with open(infile, encoding='utf-8') as f:
                 Art.CONTENT = f.read()
         Art.clean_html()
         Art.amend_html()#.prettify()
