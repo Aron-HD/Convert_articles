@@ -130,7 +130,7 @@ class Article(object):
         def wrap_img(ig):
             '''Wraps img in p tags.'''
             ig.wrap(tree.new_tag('p'))
-            lgr2.info(f'wrapped ^^^')
+            lgr2.debug(f'wrapped ^^^')
 
         def space_tag(tag):
             '''Spaces a tag with newlines before and after.'''
