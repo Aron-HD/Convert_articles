@@ -1,10 +1,17 @@
 #! /usr/bin/env python
-import logging as log, sys, json, pypandoc, bleach 
+import logging as log, os, sys, json, pypandoc, bleach 
 from bs4 import BeautifulSoup as Soup
 from natsort import natsorted as nat
 from datetime import datetime
 from pathlib import Path
 from glob import glob
+
+def resource_path(relative_path):
+    '''Get absolute path to resource, works for dev and for PyInstaller.'''
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+    # base_path = Path(__file__).parent
+    # return (base_path / relative_path).resolve()
 
 def log_setup(
         first_log,      # name of logger for section of project e.g. 'Article class' 
@@ -15,9 +22,9 @@ def log_setup(
     Uses 'log' for main app, lgr1 for Article Class.
     '''
     fd = 'logs'                                                     # folder name
-    ld = Path.cwd() / fd                                            # log directory
+    ld = Path(__file__).parent / fd                                 # log directory
     ld.mkdir(exist_ok=True)                                         # ensure exists
-    fn = Path(__file__).with_suffix('.log')                         # app filename
+    fn = Path(__name__).with_suffix('.log')                         # app filename
     lp = fd + '/%d_%m_%Y - (%H-%M-%S) - ' + f'{fn}'                 # path for log file
     nm = datetime.now().strftime(lp)                                # log name formatted
     
@@ -61,7 +68,7 @@ class Article(object):
         AWARD     # user input award - warc / media / mena / asia
     ):
         # super(Article, self).__init__()
-        self.CONTENT = None # html content variable to update
+        content = None # html content variable to update\\\\\\\\\\\\\\\\\\\\\\
         self.IMGS = {} # image names for renaming passed in when extracted from docx
         self.TAGS = TAGS
         self.SUBS = SUBS
@@ -77,7 +84,7 @@ class Article(object):
             lgr1.debug(f'dir exists: {self.MEDIA_PATH}')
         
     def convert_docx(
-        self, 
+        self,
         extract_media=True # default extract images from docx, toggle false if don't want images
     ):
         '''
@@ -87,7 +94,8 @@ class Article(object):
             extra_args = [f'--extract-media={self.MEDIA_PATH}']
         else:
             extra_args = []
-        self.CONTENT = pypandoc.convert_file(str(self.IN_FILE), 'html5', extra_args=extra_args) # find a way to extract to same folder rather than 'ID/media'
+        content = pypandoc.convert_file(str(self.IN_FILE), 'html5', extra_args=extra_args) # find a way to extract to same folder rather than 'ID/media'
+        return content
 
     def rename_docx_images(self):
         '''
@@ -102,6 +110,7 @@ class Article(object):
             files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf"]}
             for f in nat(files):
                 ID = f.parent.parent.name # to get /<ID> rather than /media
+                lgr1.debug(f'f.parent.parent.name = {ID}')
                 name = f.stem
                 ext = f.suffix
                 nums = [i for i in list(name) if i.isdigit()]
@@ -109,6 +118,7 @@ class Article(object):
                 n = "f" + num.zfill(2) 
                 fn = f"{ID}{n}{ext}"
                 fp = path / fn
+                lgr1.debug(fp)
                 if f.parent.name == 'media':
                     try:
                         f.rename(fp)
@@ -121,26 +131,28 @@ class Article(object):
             lgr1.debug(f'{self.IMGS}')
             lgr1.info(f"renamed: {len(files)} images")
 
-    def clean_html(self):
+    def clean_html(self, content):
         '''
         Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
         Tags and attributes are stored in json folder under '/json/tags.json'.
         '''
-        self.CONTENT = bleach.clean(
-                self.CONTENT,
+        content = bleach.clean(
+                content,
                 attributes=self.TAGS['attrs'],
                 tags=self.TAGS['tags'],
                 strip=True
         )
         lgr1.info('cleaned html')
+        return content
 
-    def amend_html(self):
+    def amend_html(self, content):
         '''
         Parses cleaned html content from docx, running replacements to correct headings.
         Heading substitutes are stored in json folder under '/json/subs.json'.
         Also contains the award code variable for inserting in <img src""/>.
         '''
-        tree = Soup(self.CONTENT, "html.parser")
+        tree = Soup(content, "html.parser")
+        print(tree)
 
         def wrap_img(ig):
             '''Wraps img in p tags.'''
@@ -165,10 +177,10 @@ class Article(object):
                         src = ig['src']
                         for k, v in self.IMGS.items():
                             if k in src:
-                                ig['src'] = src.replace(src, v)
+                                src = src.replace(src, v)
                                 lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
                     except KeyError as e:
-                        lgr2.warning('img caught key error')
+                        lgr2.error('img caught key error')
                         lgr2.debug(e)
                     try:
                         prt = ig.parent
@@ -184,7 +196,7 @@ class Article(object):
                             space_tag(ig)
                             wrap_img(ig)
                     except ValueError as e:
-                        lgr2.warning('img caught value error')
+                        lgr2.error('img caught value error')
                         lgr2.debug(e)
             else:
                 lgr2.info('no images...')
@@ -238,16 +250,16 @@ class Article(object):
         amend_headers_unify()
         amend_headers_replace()
         amend_lists()
-        self.CONTENT = tree
+        return tree
 
-    def write_html(self):
+    def write_html(self, content):
         '''
         Outputs cleaned and amended html content to specified file name.
         Pass in file name and html contents.
         '''
         f = self.OUT_FILE
         with open(f, 'w', encoding='utf-8') as f:
-            f.write(str(self.CONTENT))
+            f.write(str(content))
             lgr1.info(f'wrote file: {f}')
 
 def load_infile(infile):
@@ -284,7 +296,7 @@ def load_json(file):
     '''
     log.debug(f'loaded JSON: {file}')
     try:
-        with open(file) as f:
+        with open(resource_path(file)) as f:
             data = json.load(f)
             return data
     except Exception as e:
@@ -343,8 +355,8 @@ def main():
             award = load_award(a=sys.argv[2], SUBS=SUBS)
         except IndexError as e:
             log.debug('no sys args')
-            infile = "test/131412.docx"#"c:/Users/arondavidson/OneDrive - Ascential/Desktop/Murkies WPA&WMA/Aron WARC Awards/131412.docx"##input('path to file: # e.g. "test/131470.docx"\n')
-            award = input('award: # e.g. "warc" "mena" "asia" "media"\n')
+            infile = input('file path:\n - ')
+            award = input('select award - "warc" "mena" "asia" "media":\n - ')
             infile = load_infile(infile=infile)
             award = load_award(a=award, SUBS=SUBS)
         Art = Article(
@@ -358,10 +370,12 @@ def main():
             Art.rename_docx_images()
         elif infile.suffix == '.html':
             with open(infile, encoding='utf-8') as f:
-                Art.CONTENT = f.read()
-        Art.clean_html()
-        Art.amend_html()#.prettify()
-        Art.write_html()
+                content = f.read()
+        cleaned = Art.clean_html(content)
+        amended = Art.amend_html(cleaned)#.prettify()
+        Art.write_html(amended)
+
+        input('hit any key to exit:')
 
     except AttributeError as e:
         lgr1.warning(e)
