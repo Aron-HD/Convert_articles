@@ -6,7 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from glob import glob
 
-def log_setup(first_log, second_log):
+def log_setup(
+        first_log,      # name of logger for section of project e.g. 'Article class' 
+        second_log      # second logger section e.g. 'amend_html'
+    ):
     '''
     Makes log directory and sets logger file.
     Uses 'log' for main app, lgr1 for Article Class.
@@ -17,21 +20,26 @@ def log_setup(first_log, second_log):
     fn = Path(__file__).with_suffix('.log')                         # app filename
     lp = fd + '/%d_%m_%Y - (%H-%M-%S) - ' + f'{fn}'                 # path for log file
     nm = datetime.now().strftime(lp)                                # log name formatted
-    log.basicConfig(level=log.DEBUG,                                # set up logging to file
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M',
-                    filename=nm,
-                    filemode='w')
+    
+    log.basicConfig(
+        level=log.DEBUG,                                            # set up logging to file
+        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        datefmt='%m-%d %H:%M',
+        filename=nm,
+        filemode='w'
+    )
+
     cs = log.StreamHandler()                                        # define a Handler as console 
     cs.setLevel(log.INFO)                                           # write INFO messages or higher to the sys.stderr   
     fm = log.Formatter('%(name)-12s: %(levelname)-8s > %(message)s')# set a simpler format for console
     cs.setFormatter(fm)                                             # tell the handler to use this format
     log.getLogger('').addHandler(cs)                                # add the handler to the root logger
-    log.info('setup logging')                                       # log to root
+
     lgr1 = log.getLogger(first_log)                                 # Define loggers for different areas of application
-    lgr2 = log.getLogger(second_log)
+    lgr2 = log.getLogger(second_log)                                # trag where stuff is happening in logs
     lgr1.debug(f'defined lgr1: {lgr1}')
     lgr2.debug(f'defined lgr2: {lgr2}')
+    log.debug('setup logging')                                      # log to root
     return lgr1, lgr2
 
 lgr1, lgr2 = log_setup(first_log='ArticleClass',
@@ -45,24 +53,33 @@ class Article(object):
         - TAGS: specify tags and attributes for bleach module in json file.
         - SUBS: specify substitutions for h3 headings in html.
     '''
-    def __init__(self, IN_FILE, TAGS, SUBS, AWARD):
+    def __init__(
+        self,
+        IN_FILE,  # user input filename
+        TAGS,     # allowed html tags and attributes for bleach module
+        SUBS,     # substitute awards headers, also loaded in from JSON
+        AWARD     # user input award - warc / media / mena / asia
+    ):
         # super(Article, self).__init__()
-        self.IN_FILE = IN_FILE
-        self.OUT_FILE = Path(f"{IN_FILE.parent}/{IN_FILE.stem}/{IN_FILE.stem}.htm")
+        self.CONTENT = None # html content variable to update
+        self.IMGS = {} # image names for renaming passed in when extracted from docx
         self.TAGS = TAGS
         self.SUBS = SUBS
-        self.IMGS = {}
-        self.MEDIA_PATH = IN_FILE.parent / IN_FILE.stem
-        self.CONTENT = None
         self.AWARD = AWARD
-        self.AWARD_CODE = SUBS[AWARD]['code']
+        self.IN_FILE = IN_FILE
+        self.AWARD_CODE = SUBS[AWARD]['code'] # award-specific code to go in img src tags
+        self.MEDIA_PATH = IN_FILE.parent / IN_FILE.stem # path for extracting docximages to
+        self.OUT_FILE = Path(f"{IN_FILE.parent}/{IN_FILE.stem}/{IN_FILE.stem}.htm") # maybe change to {IN_FILE.parent}/htm/{IN_FILE.stem}.htm
         try:
-            self.MEDIA_PATH.mkdir(exist_ok=False)
-            lgr1.info(f'made dir: {self.MEDIA_PATH}')
+            self.MEDIA_PATH.mkdir(exist_ok=False) # ensure directory for img / htm extraction exists
+            lgr1.info(f'made dir: {self.MEDIA_PATH}') 
         except FileExistsError as e:
             lgr1.debug(f'dir exists: {self.MEDIA_PATH}')
         
-    def convert_docx(self, extract_media=True):
+    def convert_docx(
+        self, 
+        extract_media=True # default extract images from docx, toggle false if don't want images
+    ):
         '''
         Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
         '''
@@ -109,13 +126,11 @@ class Article(object):
         Uses the bleach module to clean unwanted html tags and limit attributes of allowed tags.
         Tags and attributes are stored in json folder under '/json/tags.json'.
         '''
-        attrs = self.TAGS['attrs']
-        tags = self.TAGS['tags']
         self.CONTENT = bleach.clean(
-            self.CONTENT,
-            attributes=attrs,
-            tags=tags,
-            strip=True
+                self.CONTENT,
+                attributes=self.TAGS['attrs'],
+                tags=self.TAGS['tags'],
+                strip=True
         )
         lgr1.info('cleaned html')
 
@@ -140,8 +155,8 @@ class Article(object):
             except NotImplementedError as e:
                 lgr2.warning(f"couldn't space tag: {tag}")
 
-        def html_images():
-            '''If images exist, replace the source attribute to renamed image and ensre wrapped in <p> tags.'''
+        def amend_images():
+            '''If images exist, replace the source attribute to renamed image and ensure in its own paragraph.'''
             images = tree.find_all('img')
             lgr2.debug(f"article images: {images}")
             if images:
@@ -174,8 +189,8 @@ class Article(object):
             else:
                 lgr2.info('no images...')
 
-        def html_headers_unify():
-            '''Makes all headers <p><strong>.'''
+        def amend_headers_unify():
+            '''Makes all headers bold paragraphs.'''
             headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
             if not headers:
                 lgr2.info('no header tags to replace...')
@@ -197,7 +212,7 @@ class Article(object):
                         p.name = 'h5'
                         lgr2.debug(f'<p><strong> --> {p}')
 
-        def html_headers_replace():
+        def amend_headers_replace():
             '''Runs replacements on headers.'''
             replace = {                                             # merge award specific headers
                 **self.SUBS[self.AWARD],                            # with generic headers
@@ -212,16 +227,17 @@ class Article(object):
                         h5.name = 'h3'
                         lgr2.debug(f'<h5> --> {h5}')
             
-        def html_lists():
+        def amend_lists():
+            '''Removes paragraph tags within list elements.'''
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
                     # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
 
-        html_images()
-        html_headers_unify()
-        html_headers_replace()
-        html_lists()
+        amend_images()
+        amend_headers_unify()
+        amend_headers_replace()
+        amend_lists()
         self.CONTENT = tree
 
     def write_html(self):
