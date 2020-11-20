@@ -151,12 +151,10 @@ class Article(object):
         Heading substitutes are stored in json folder under '/json/subs.json'.
         Also contains the award code variable for inserting in <img src""/>.
         '''
-        tree = Soup(content, "html.parser")
-        print(tree)
 
-        def wrap_img(ig):
+        def wrap_img(tag):
             '''Wraps img in p tags.'''
-            ig.wrap(tree.new_tag('p'))
+            tag.wrap(tree.new_tag('p'))
             lgr2.debug(f'wrapped ^^^')
 
         def space_tag(tag):
@@ -167,7 +165,7 @@ class Article(object):
             except NotImplementedError as e:
                 lgr2.warning(f"couldn't space tag: {tag}")
 
-        def amend_images():
+        def amend_images(tree):
             '''If images exist, replace the source attribute to renamed image and ensure in its own paragraph.'''
             images = tree.find_all('img')
             lgr2.debug(f"article images: {images}")
@@ -201,7 +199,7 @@ class Article(object):
             else:
                 lgr2.info('no images...')
 
-        def amend_headers_unify():
+        def amend_headers_unify(tree):
             '''Makes all headers bold paragraphs.'''
             headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
             if not headers:
@@ -224,7 +222,7 @@ class Article(object):
                         p.name = 'h5'
                         lgr2.debug(f'<p><strong> --> {p}')
 
-        def amend_headers_replace():
+        def amend_headers_replace(tree):
             '''Runs replacements on headers.'''
             replace = {                                             # merge award specific headers
                 **self.SUBS[self.AWARD],                            # with generic headers
@@ -239,17 +237,18 @@ class Article(object):
                         h5.name = 'h3'
                         lgr2.debug(f'<h5> --> {h5}')
             
-        def amend_lists():
+        def amend_lists(tree):
             '''Removes paragraph tags within list elements.'''
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
                     # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
 
-        amend_images()
-        amend_headers_unify()
-        amend_headers_replace()
-        amend_lists()
+        tree = Soup(content, "html.parser")
+        amend_images(tree)
+        amend_headers_unify(tree)
+        amend_headers_replace(tree)
+        amend_lists(tree)
         return tree
 
     def write_html(self, content):
@@ -366,7 +365,7 @@ def main():
             AWARD=award
         )
         if infile.suffix == '.docx':
-            Art.convert_docx(extract_media=True)
+            content = Art.convert_docx(extract_media=True)
             Art.rename_docx_images()
         elif infile.suffix == '.html':
             with open(infile, encoding='utf-8') as f:
