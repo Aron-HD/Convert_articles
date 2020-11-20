@@ -1,11 +1,12 @@
 ###Python###
 
 __pycache__/
-/test
-# /_archive
-*.msi
+/tests
+/dev
+#/_archive
 *.docx
 *.html
+*.htm
 *.log
 *.txt
 *.sublime-project
