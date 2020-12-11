@@ -122,7 +122,7 @@ class Article(object):
                 if f.parent.name == 'media':
                     try:
                         f.rename(fp)
-                        lgr1.info(f'"{f.name}" --> {fn}')
+                        lgr1.debug(f'"{f.name}" --> {fn}')
                         self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
                     except FileExistsError as e:                                            # catch renaming files that are already there
                         lgr1.warning(f'img exists already: {f}')
