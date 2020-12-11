@@ -176,7 +176,7 @@ class Article(object):
                         for k, v in self.IMGS.items():
                             if k in src:
                                 ig['src'] = src.replace(src, v)                 # set original <img src=""> attribute to new variable
-                                lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
+                                lgr2.debug(f'<img src="{k}"> --> <img src="{v}">')
                     except KeyError as e:
                         lgr2.error('img caught key error')
                         lgr2.debug(e)
@@ -188,7 +188,7 @@ class Article(object):
                             wrap_img(ig)
                             if len(prt.get_text(strip=True)) == 0:              # strip whitespace and remove p tag if empty
                                 prt.unwrap()
-                                lgr2.info(f'cut {prt}')
+                                lgr2.debug(f'cut {prt}')
                             # space_tag(ig)
                         else:
                             space_tag(ig)
@@ -239,6 +239,7 @@ class Article(object):
             
         def amend_lists(tree):
             '''Removes paragraph tags within list elements.'''
+            lgr2.info('checking list elements...')
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
@@ -246,6 +247,7 @@ class Article(object):
 
         def amend_footnotes(tree):
             '''Removes anchor tags from footnotes and endnotes section and adds h3 header to endnotes.'''
+            lgr2.info('amending footnotes...')
             # TODO: 
             # find all sup tags
             # if sup tag parent is anchor and a.href contains "#fn"
@@ -259,6 +261,7 @@ class Article(object):
         amend_headers_unify(tree)
         amend_headers_replace(tree)
         amend_lists(tree)
+        amend_footnotes(tree)
         return tree
 
     def write_html(self, content):
@@ -384,7 +387,7 @@ def main():
         amended = Art.amend_html(cleaned)#.prettify()
         Art.write_html(amended)
 
-        input('hit any key to exit:')
+        # input('hit any key to exit:')
 
     except AttributeError as e:
         lgr1.warning(e)
