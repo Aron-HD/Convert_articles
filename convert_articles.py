@@ -175,7 +175,7 @@ class Article(object):
                         src = ig['src']
                         for k, v in self.IMGS.items():
                             if k in src:
-                                src = src.replace(src, v)
+                                ig['src'] = src.replace(src, v)                 # set original <img src=""> attribute to new variable
                                 lgr2.info(f'<img src="{k}"> --> <img src="{v}">')
                     except KeyError as e:
                         lgr2.error('img caught key error')
@@ -243,6 +243,16 @@ class Article(object):
                 if li.find('p'):
                     li.p.unwrap()
                     # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
+
+        def amend_footnotes(tree):
+            '''Removes anchor tags from footnotes and endnotes section and adds h3 header to endnotes.'''
+            # TODO: 
+            # find all sup tags
+            # if sup tag parent is anchor and a.href contains "#fn"
+            # repeat above for li tags
+            # and if parent of li tags is an ol
+            # place before it an h3 'Sources' heading
+            pass
 
         tree = Soup(content, "html.parser")
         amend_images(tree)
