@@ -1,41 +1,41 @@
 {
    "WARC Awards": {
-      "market": "<h3>Market background and objectives</h3>",
-      "objectives": "<h5>Objectives</h5>",
-      "insight": "<h3>Insight and strategic thinking</h3>",
-      "execution": "<h3>Implementation, including creative and media development</h3>",
-      "results": "<h3>Performance against objectives</h3>",
+      "market": "Market background and objectives",
+      "insight": "Insight and strategic thinking",
+      "execution": "Implementation, including creative and media development",
+      "results": "Performance against objectives",
       "code": "WARC-AWARDS"
    },
    "MENA Prize": {
-      "market": "<h3>Market background and cultural context</h3>",
-      "objectives": "<h3>Objectives</h3>",
-      "insight": "<h3>Insight and strategic thinking</h3>",
-      "execution": "<h3>Creative and/or channel execution</h3>",
-      "results": "<h3>Performance against objectives</h3>",
+      "market": "Market background and cultural context",
+      "objectives": "Objectives",
+      "insight": "Insight and strategic thinking",
+      "execution": "Creative and/or channel execution",
+      "results": "Performance against objectives",
       "code": "WARC-PRIZE-MENA"
    },
    "Asia Prize": {
-      "market": "<h3>Market background and cultural context</h3>",
-      "objectives": "<h3>Objectives</h3>",
-      "insight": "<h3>Insight and strategic thinking</h3>",
-      "execution": "<h3>Creative and/or channel execution</h3>",
-      "results": "<h3>Performance against objectives</h3>",
+      "market": "Market background and cultural context",
+      "objectives": "Objectives",
+      "insight": "Insight and strategic thinking",
+      "execution": "Creative and/or channel execution",
+      "results": "Performance against objectives",
       "code": "WARC-PRIZE-ASIA"
    },
    "Media Awards": {
-      "market": "<h3>Market background and context</h3>",
-      "objectives": "<h3>Communications objectives</h3>",
-      "insight": "<h3>Insights and strategy</h3>",
-      "execution": "<h3>Implementation and optimisation</h3>",
-      "results": "<h3>Measurement approach and results</h3>",
+      "market": "Market background and context",
+      "objectives": "Communications objectives",
+      "insight": "Insights and strategy",
+      "execution": "Implementation and optimisation",
+      "results": "Measurement approach and results",
       "code": "WARC-AWARDS-MEDIA"
    },
    "All": {
-      "exec": "<h3>Executive summary</h3>",
-      "lessons": "<h3>Lessons learned</h3>",
-      "ROI": "<h3>ROI</h3>",
-      "sources": "<h3>Sources</h3>",
-      "footnotes": "<h3>Footnotes</h3>"
+      "exec": "Executive summary",
+      "lessons": "Lessons learned",
+      "ROI": "ROI",
+      "client": "Client's view",
+      "sources": "Sources",
+      "footnotes": "Footnotes"
    }
 }
