@@ -5,7 +5,7 @@
 	    "ul", "li", "ol", "sup"
 	],
 	"attrs": {
-	    "a": ["href"],
+	    "a": ["href", "role"],
 	    "img": ["src"],
 	    "ul": ["start"],
 	    "ol": ["start"]
