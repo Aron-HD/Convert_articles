@@ -10,12 +10,12 @@ Considering splitting html parsing to a utils folder to keep tidy.
 ### ToDo
 
 - ~~sub h5 - h3 titles.~~ 
-- fix objectives h3 on WA (also run a check to see if any are missing)
-- add Sources heading to endnotes
+- ~~fix objectives h3 on WA also~~ run a check to see if any headers are missing
+- ~~add Sources heading to endnotes~~
 - ~~nest under an Article class~~
 - ~~ensure imgs are in their own p tags~~
 - regex matching for h3 titles to be more exact / account for spaces at line endings etc (or could strip()).
-- add requirements.txt / pip.lock to make it standalone
+- ~~add requirements.txt / pip.lock to make it standalone~~
 - ~~add logging~~
 - ~~add file verification for sys.arv[1]~~
 - ~~add unit testing: `def test_rename_docx_images(Path('test/131412/media')), IMGS={}):`~~
