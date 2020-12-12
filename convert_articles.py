@@ -27,18 +27,18 @@ def log_setup(
     fn = Path(__name__).with_suffix('.log')                         # app filename
     lp = fd + '/%d_%m_%Y - (%H-%M-%S) - ' + f'{fn}'                 # path for log file
     nm = datetime.now().strftime(lp)                                # log name formatted
-    
     log.basicConfig(
         level=log.DEBUG,                                            # set up logging to file
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M',
-        filename=nm,
-        filemode='w'
+        handlers=[log.FileHandler(nm, 'w', 'utf-8')]
+        # filename=nm,
+        # filemode='w',
     )
 
-    cs = log.StreamHandler()                                        # define a Handler as console 
-    cs.setLevel(log.INFO)                                           # write INFO messages or higher to the sys.stderr   
     fm = log.Formatter('%(name)-12s: %(levelname)-8s > %(message)s')# set a simpler format for console
+    cs = log.StreamHandler()                                        # define a Handler as console 
+    cs.setLevel(log.INFO)                                          # write INFO messages or higher to the sys.stderr   
     cs.setFormatter(fm)                                             # tell the handler to use this format
     log.getLogger('').addHandler(cs)                                # add the handler to the root logger
 
@@ -91,8 +91,10 @@ class Article(object):
         Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
         '''
         if extract_media:
+            lgr1.info('converting docx to html and extracting images...')
             extra_args = [f'--extract-media={self.MEDIA_PATH}']
         else:
+            lgr1.info('converting docx to html...')
             extra_args = []
         content = pypandoc.convert_file(str(self.IN_FILE), 'html5', extra_args=extra_args) # find a way to extract to same folder rather than 'ID/media'
         return content
@@ -107,7 +109,7 @@ class Article(object):
             lgr1.info('no images to rename')
         else:
             lgr1.info('renaming images...')
-            files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf"]}
+            files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
             for f in nat(files):
                 ID = f.parent.parent.name # to get /<ID> rather than /media
                 lgr1.debug(f'f.parent.parent.name = {ID}')
@@ -233,7 +235,7 @@ class Article(object):
             for h5 in h5s:
                 space_tag(h5)
                 for k, v in replace.items():        
-                    if h5.text.casefold().strip() in v.casefold():
+                    if h5.text.casefold().strip().replace("’","'") == v.casefold(): # replace apostrophe to match Client's view
                         h5.name = 'h3'
                         lgr2.debug(f'<h5> --> {h5}')
             
@@ -243,18 +245,31 @@ class Article(object):
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
-                    # lgr2.info(f'<li><p> --> {li}') # unicode error printing these in logs
+                    lgr2.info(f'<li><p> --> {li}')
 
         def amend_footnotes(tree):
             '''Removes anchor tags from footnotes and endnotes section and adds h3 header to endnotes.'''
             lgr2.info('amending footnotes...')
-            # TODO: 
-            # find all sup tags
-            # if sup tag parent is anchor and a.href contains "#fn"
-            # repeat above for li tags
-            # and if parent of li tags is an ol
-            # place before it an h3 'Sources' heading
-            pass
+            ftn = tree.find(role="doc-backlink")
+            if ftn:
+                h3 = tree.new_tag('h3')
+                h3.string = 'Sources'
+                ftn.parent.parent.insert_before(h3)                 # add <h3>Sources</h3> if endnotes exist
+                h3.insert_after('\n')
+                lgr2.debug(f'{h3} <-- inserted before {ftn.parent.parent.name}')
+                
+                for a in tree.find_all('a'):
+                    if a.has_attr('role'):
+                        if a['role'] == 'doc-noteref':
+                            sup = a.find('sup')
+                            if sup:
+                                a.unwrap()                          # unwrap to leave sup tag and contents intact
+                                lgr2.debug(f'{a} --> {sup}')
+                        elif a['role'] == 'doc-backlink':
+                            lgr2.debug(f'deleting tag --> {a}')
+                            a.decompose()                           # removes the backlink entirely '<a>↩︎</a>'
+            else:
+                lgr2.debug('no footnotes..')
 
         tree = Soup(content, "html.parser")
         amend_images(tree)
