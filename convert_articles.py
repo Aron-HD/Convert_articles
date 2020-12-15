@@ -245,7 +245,7 @@ class Article(object):
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
-                    lgr2.info(f'<li><p> --> {li}')
+                    lgr2.debug(f'<li><p> --> {li}')
 
         def amend_footnotes(tree):
             '''Removes anchor tags from footnotes and endnotes section and adds h3 header to endnotes.'''
