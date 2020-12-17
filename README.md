@@ -23,7 +23,7 @@ Considering splitting html parsing to a utils folder to keep tidy.
 - add warning for .emf files and tables / charts
 - split hmtl amending to separate package
 - use pyinstaller to make exe
-- allow directories as well as single docx files so doesn't start script new everytime and create new log.
+- ~~allow directories as well as single docx files so doesn't start script new everytime and create new log.~~
 - use colour on warnings and flags for file or dir through click cli
 
 # Docs
