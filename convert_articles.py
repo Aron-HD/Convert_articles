@@ -298,6 +298,9 @@ def load_infile(infile):
     if f.is_file():
         log.info(f'file -> {f}')
         return f
+    if f.is_dir():
+        log.info(f'directory -> {f}')
+        return f
     else:
         log.warning(f'{f} not a valid file')
         raise SystemExit
@@ -328,6 +331,23 @@ def load_json(file):
             return data
     except Exception as e:
         log.error('error loading json:', e)
+
+def process(infile, TAGS, SUBS, award):
+    Art = Article(
+        IN_FILE=infile,
+        TAGS=TAGS, 
+        SUBS=SUBS,
+        AWARD=award
+    )
+    if infile.suffix == '.docx':
+        content = Art.convert_docx(extract_media=True)
+        Art.rename_docx_images()
+    elif infile.suffix == '.html':
+        with open(infile, encoding='utf-8') as f:
+            content = f.read()
+    cleaned = Art.clean_html(content)
+    amended = Art.amend_html(cleaned)#.prettify()
+    Art.write_html(amended)
 
 def main():
     '''
@@ -386,22 +406,13 @@ def main():
             award = input('select award - "warc" "mena" "asia" "media":\n - ')
             infile = load_infile(infile=infile)
             award = load_award(a=award, SUBS=SUBS)
-        Art = Article(
-            IN_FILE=infile,
-            TAGS=TAGS, 
-            SUBS=SUBS,
-            AWARD=award
-        )
-        if infile.suffix == '.docx':
-            content = Art.convert_docx(extract_media=True)
-            Art.rename_docx_images()
-        elif infile.suffix == '.html':
-            with open(infile, encoding='utf-8') as f:
-                content = f.read()
-        cleaned = Art.clean_html(content)
-        amended = Art.amend_html(cleaned)#.prettify()
-        Art.write_html(amended)
 
+        if infile.is_dir():
+            for f in infile.glob(r'*.docx'):
+                process(f, TAGS, SUBS, award)
+        else:    
+            process(infile, TAGS, SUBS, award)
+        log.info('# FINISHED #')
         # input('hit any key to exit:')
 
     except AttributeError as e:
