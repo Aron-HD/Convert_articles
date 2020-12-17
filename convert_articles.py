@@ -75,14 +75,14 @@ class Article(object):
         self.AWARD = AWARD
         self.IN_FILE = IN_FILE
         self.AWARD_CODE = SUBS[AWARD]['code'] # award-specific code to go in img src tags
-        self.MEDIA_PATH = IN_FILE.parent / IN_FILE.stem # path for extracting docximages to
-        self.OUT_FILE = Path(f"{IN_FILE.parent}/{IN_FILE.stem}/{IN_FILE.stem}.htm") # maybe change to {IN_FILE.parent}/htm/{IN_FILE.stem}.htm
+        self.MEDIA_PATH = IN_FILE.parents[0] / 'htm' # path for extracting docximages to
+        self.OUT_FILE = Path(f"{self.MEDIA_PATH}/{IN_FILE.stem}.htm")
         try:
             self.MEDIA_PATH.mkdir(exist_ok=False) # ensure directory for img / htm extraction exists
             lgr1.info(f'made dir: {self.MEDIA_PATH}') 
         except FileExistsError as e:
             lgr1.debug(f'dir exists: {self.MEDIA_PATH}')
-        
+
     def convert_docx(
         self,
         extract_media=True # default extract images from docx, toggle false if don't want images
@@ -105,14 +105,14 @@ class Article(object):
         Returns old img path and new img filename in a dict for subtitution in html.
         '''
         path = self.MEDIA_PATH
-        if not path:
+        ID = self.OUT_FILE.stem # f.parent.parent.name # to get /<ID> rather than /media
+        lgr1.debug(f'ID = {ID}')
+        lgr1.info('renaming images...')
+        files = {p.resolve() for p in Path(path).glob(r"**/image*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
+        if not files:
             lgr1.info('no images to rename')
         else:
-            lgr1.info('renaming images...')
-            files = {p.resolve() for p in Path(path).glob(r"**/*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
             for f in nat(files):
-                ID = f.parent.parent.name # to get /<ID> rather than /media
-                lgr1.debug(f'f.parent.parent.name = {ID}')
                 name = f.stem
                 ext = f.suffix
                 nums = [i for i in list(name) if i.isdigit()]
@@ -131,7 +131,7 @@ class Article(object):
                 else:
                     self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
             lgr1.debug(f'{self.IMGS}')
-            lgr1.info(f"renamed: {len(files)} images")
+            lgr1.info(f"renamed: {len(self.IMGS)} images")
 
     def clean_html(self, content):
         '''
@@ -199,13 +199,13 @@ class Article(object):
                         lgr2.error('img caught value error')
                         lgr2.debug(e)
             else:
-                lgr2.info('no images...')
+                lgr2.debug('no images...')
 
         def amend_headers_unify(tree):
             '''Makes all headers bold paragraphs.'''
             headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
             if not headers:
-                lgr2.info('no header tags to replace...')
+                lgr2.debug('no header tags to replace...')
             else:
                 for hdr in headers:
                     if hdr:
@@ -213,7 +213,7 @@ class Article(object):
                         hdr.name = 'p'
                         lgr2.debug(f'header --> {hdr}')
             # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
-            lgr2.info('changing all subheadings to h5...')
+            lgr2.debug('changing all subheadings to h5...')
             paras = tree.find_all('p')
             for p in paras:
                 if p.find('strong'):
@@ -230,7 +230,7 @@ class Article(object):
                 **self.SUBS[self.AWARD],                            # with generic headers
                 **self.SUBS['All']
             }
-            lgr2.info('changing award subheadings to h3...')
+            lgr2.debug('changing award subheadings to h3...')
             h5s = tree.find_all('h5')          
             for h5 in h5s:
                 space_tag(h5)
@@ -241,7 +241,7 @@ class Article(object):
             
         def amend_lists(tree):
             '''Removes paragraph tags within list elements.'''
-            lgr2.info('checking list elements...')
+            lgr2.debug('checking list elements...')
             for li in tree.find_all('li'):
                 if li.find('p'):
                     li.p.unwrap()
@@ -249,7 +249,7 @@ class Article(object):
 
         def amend_footnotes(tree):
             '''Removes anchor tags from footnotes and endnotes section and adds h3 header to endnotes.'''
-            lgr2.info('amending footnotes...')
+            lgr2.debug('amending footnotes...')
             ftn = tree.find(role="doc-backlink")
             if ftn:
                 h3 = tree.new_tag('h3')
@@ -287,7 +287,7 @@ class Article(object):
         f = self.OUT_FILE
         with open(f, 'w', encoding='utf-8') as f:
             f.write(str(content))
-            lgr1.info(f'wrote file: {f}')
+            lgr1.info(f'wrote file -> {f.name}')
 
 def load_infile(infile):
     '''
