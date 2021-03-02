@@ -1,34 +1,48 @@
 #! /usr/bin/env python
-import logging as log, os, sys, json, pypandoc, bleach 
+import logging as log
+import os
+import sys
+import json
+import pypandoc
+import bleach
 from bs4 import BeautifulSoup as Soup
 from natsort import natsorted as nat
 from datetime import datetime
 from pathlib import Path
 from glob import glob
 
+
 def resource_path(relative_path):
     '''Get absolute path to resource, works for dev and for PyInstaller.'''
-    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(
+        os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
     # base_path = Path(__file__).parent
     # return (base_path / relative_path).resolve()
 
+
 def log_setup(
-        first_log,      # name of logger for section of project e.g. 'Article class' 
-        second_log      # second logger section e.g. 'amend_html'
-    ):
+    first_log,      # name of logger for section of project e.g. 'Article class'
+    second_log      # second logger section e.g. 'amend_html'
+):
     '''
     Makes log directory and sets logger file.
     Uses 'log' for main app, lgr1 for Article Class.
     '''
     fd = 'logs'                                                     # folder name
-    ld = Path(__file__).parent / fd                                 # log directory
-    ld.mkdir(exist_ok=True)                                         # ensure exists
-    fn = Path(__name__).with_suffix('.log')                         # app filename
-    lp = fd + '/%d_%m_%Y - (%H-%M-%S) - ' + f'{fn}'                 # path for log file
-    nm = datetime.now().strftime(lp)                                # log name formatted
+    # log directory
+    ld = Path(__file__).parent / fd
+    # ensure exists
+    ld.mkdir(exist_ok=True)
+    fn = Path(__name__).with_suffix(
+        '.log')                         # app filename
+    # path for log file
+    lp = fd + '/%d_%m_%Y - (%H-%M-%S) - ' + f'{fn}'
+    # log name formatted
+    nm = datetime.now().strftime(lp)
     log.basicConfig(
-        level=log.DEBUG,                                            # set up logging to file
+        # set up logging to file
+        level=log.DEBUG,
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M',
         handlers=[log.FileHandler(nm, 'w', 'utf-8')]
@@ -36,21 +50,31 @@ def log_setup(
         # filemode='w',
     )
 
-    fm = log.Formatter('%(name)-12s: %(levelname)-8s > %(message)s')# set a simpler format for console
-    cs = log.StreamHandler()                                        # define a Handler as console 
-    cs.setLevel(log.INFO)                                          # write INFO messages or higher to the sys.stderr   
-    cs.setFormatter(fm)                                             # tell the handler to use this format
-    log.getLogger('').addHandler(cs)                                # add the handler to the root logger
+    # set a simpler format for console
+    fm = log.Formatter('%(name)-12s: %(levelname)-8s > %(message)s')
+    # define a Handler as console
+    cs = log.StreamHandler()
+    # write INFO messages or higher to the sys.stderr
+    cs.setLevel(log.INFO)
+    # tell the handler to use this format
+    cs.setFormatter(fm)
+    # add the handler to the root logger
+    log.getLogger('').addHandler(cs)
 
-    lgr1 = log.getLogger(first_log)                                 # Define loggers for different areas of application
-    lgr2 = log.getLogger(second_log)                                # trag where stuff is happening in logs
+    # Define loggers for different areas of application
+    lgr1 = log.getLogger(first_log)
+    # trag where stuff is happening in logs
+    lgr2 = log.getLogger(second_log)
     lgr1.debug(f'defined lgr1: {lgr1}')
     lgr2.debug(f'defined lgr2: {lgr2}')
-    log.debug('setup logging')                                      # log to root
+    # log to root
+    log.debug('setup logging')
     return lgr1, lgr2
+
 
 lgr1, lgr2 = log_setup(first_log='ArticleClass',
                        second_log='amend_html')
+
 
 class Article(object):
     '''
@@ -60,6 +84,7 @@ class Article(object):
         - TAGS: specify tags and attributes for bleach module in json file.
         - SUBS: specify substitutions for h3 headings in html.
     '''
+
     def __init__(
         self,
         IN_FILE,  # user input filename
@@ -68,24 +93,27 @@ class Article(object):
         AWARD     # user input award - warc / media / mena / asia
     ):
         # super(Article, self).__init__()
-        content = None # html content variable to update\\\\\\\\\\\\\\\\\\\\\\
-        self.IMGS = {} # image names for renaming passed in when extracted from docx
+        content = None  # html content variable to update\\\\\\\\\\\\\\\\\\\\\\
+        self.IMGS = {}  # image names for renaming passed in when extracted from docx
         self.TAGS = TAGS
         self.SUBS = SUBS
         self.AWARD = AWARD
         self.IN_FILE = IN_FILE
-        self.AWARD_CODE = SUBS[AWARD]['code'] # award-specific code to go in img src tags
-        self.MEDIA_PATH = IN_FILE.parents[0] / 'htm' # path for extracting docximages to
+        # award-specific code to go in img src tags
+        self.AWARD_CODE = SUBS[AWARD]['code']
+        # path for extracting docximages to
+        self.MEDIA_PATH = IN_FILE.parents[0] / 'htm'
         self.OUT_FILE = Path(f"{self.MEDIA_PATH}/{IN_FILE.stem}.htm")
         try:
-            self.MEDIA_PATH.mkdir(exist_ok=False) # ensure directory for img / htm extraction exists
-            lgr1.info(f'made dir: {self.MEDIA_PATH}') 
+            # ensure directory for img / htm extraction exists
+            self.MEDIA_PATH.mkdir(exist_ok=False)
+            lgr1.info(f'made dir: {self.MEDIA_PATH}')
         except FileExistsError as e:
             lgr1.debug(f'dir exists: {self.MEDIA_PATH}')
 
     def convert_docx(
         self,
-        extract_media=True # default extract images from docx, toggle false if don't want images
+        extract_media=True  # default extract images from docx, toggle false if don't want images
     ):
         '''
         Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
@@ -96,7 +124,9 @@ class Article(object):
         else:
             lgr1.info('converting docx to html...')
             extra_args = []
-        content = pypandoc.convert_file(str(self.IN_FILE), 'html5', extra_args=extra_args) # find a way to extract to same folder rather than 'ID/media'
+        # find a way to extract to same folder rather than 'ID/media'
+        content = pypandoc.convert_file(
+            str(self.IN_FILE), 'html5', extra_args=extra_args)
         return content
 
     def rename_docx_images(self):
@@ -105,10 +135,11 @@ class Article(object):
         Returns old img path and new img filename in a dict for subtitution in html.
         '''
         path = self.MEDIA_PATH
-        ID = self.OUT_FILE.stem # f.parent.parent.name # to get /<ID> rather than /media
+        ID = self.OUT_FILE.stem  # f.parent.parent.name # to get /<ID> rather than /media
         lgr1.debug(f'ID = {ID}')
         lgr1.info('renaming images...')
-        files = {p.resolve() for p in Path(path).glob(r"**/image*") if p.suffix.casefold() in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
+        files = {p.resolve() for p in Path(path).glob(r"**/image*") if p.suffix.casefold()
+                 in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
         if not files:
             lgr1.info('no images to rename')
         else:
@@ -117,7 +148,7 @@ class Article(object):
                 ext = f.suffix
                 nums = [i for i in list(name) if i.isdigit()]
                 num = ''.join(nums)
-                n = "f" + num.zfill(2) 
+                n = "f" + num.zfill(2)
                 fn = f"{ID}{n}{ext}"
                 fp = path / fn
                 lgr1.debug(fp)
@@ -126,7 +157,8 @@ class Article(object):
                         f.rename(fp)
                         lgr1.debug(f'"{f.name}" --> {fn}')
                         self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
-                    except FileExistsError as e:                                            # catch renaming files that are already there
+                    # catch renaming files that are already there
+                    except FileExistsError as e:
                         lgr1.warning(f'img exists already: {f}')
                 else:
                     self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
@@ -139,10 +171,10 @@ class Article(object):
         Tags and attributes are stored in json folder under '/json/tags.json'.
         '''
         content = bleach.clean(
-                content,
-                attributes=self.TAGS['attrs'],
-                tags=self.TAGS['tags'],
-                strip=True
+            content,
+            attributes=self.TAGS['attrs'],
+            tags=self.TAGS['tags'],
+            strip=True
         )
         lgr1.info('cleaned html')
         return content
@@ -162,7 +194,7 @@ class Article(object):
         def space_tag(tag):
             '''Spaces a tag with newlines before and after.'''
             try:
-                tag.insert_before('\n')                      
+                tag.insert_before('\n')
                 tag.insert_after('\n')
             except NotImplementedError as e:
                 lgr2.warning(f"couldn't space tag: {tag}")
@@ -177,7 +209,8 @@ class Article(object):
                         src = ig['src']
                         for k, v in self.IMGS.items():
                             if k in src:
-                                ig['src'] = src.replace(src, v)                 # set original <img src=""> attribute to new variable
+                                # set original <img src=""> attribute to new variable
+                                ig['src'] = src.replace(src, v)
                                 lgr2.debug(f'<img src="{k}"> --> <img src="{v}">')
                     except KeyError as e:
                         lgr2.error('img caught key error')
@@ -186,9 +219,11 @@ class Article(object):
                         prt = ig.parent
                         if ig.parent.name == 'p':
                             space_tag(prt)
-                            prt.insert_after(ig)                                # insert all images outside of p tag to wrap them properly in p tags.
+                            # insert all images outside of p tag to wrap them properly in p tags.
+                            prt.insert_after(ig)
                             wrap_img(ig)
-                            if len(prt.get_text(strip=True)) == 0:              # strip whitespace and remove p tag if empty
+                            # strip whitespace and remove p tag if empty
+                            if len(prt.get_text(strip=True)) == 0:
                                 prt.unwrap()
                                 lgr2.debug(f'cut {prt}')
                             # space_tag(ig)
@@ -203,7 +238,7 @@ class Article(object):
 
         def amend_headers_unify(tree):
             '''Makes all headers bold paragraphs.'''
-            headers = tree.find_all(['h1','h2', 'h3','h4','h5'])
+            headers = tree.find_all(['h1', 'h2', 'h3', 'h4', 'h5'])
             if not headers:
                 lgr2.debug('no header tags to replace...')
             else:
@@ -217,7 +252,7 @@ class Article(object):
             paras = tree.find_all('p')
             for p in paras:
                 if p.find('strong'):
-                    if p.text.endswith((".",",",":",";","?")):      # regex this
+                    if p.text.endswith((".", ",", ":", ";", "?")):      # regex this
                         pass
                     else:
                         p.strong.unwrap()
@@ -227,18 +262,19 @@ class Article(object):
         def amend_headers_replace(tree):
             '''Runs replacements on headers.'''
             replace = {                                             # merge award specific headers
-                **self.SUBS[self.AWARD],                            # with generic headers
+                # with generic headers
+                **self.SUBS[self.AWARD],
                 **self.SUBS['All']
             }
             lgr2.debug('changing award subheadings to h3...')
-            h5s = tree.find_all('h5')          
+            h5s = tree.find_all('h5')
             for h5 in h5s:
                 space_tag(h5)
-                for k, v in replace.items():        
-                    if h5.text.casefold().strip().replace("’","'") == v.casefold(): # replace apostrophe to match Client's view
+                for k, v in replace.items():
+                    if h5.text.casefold().strip().replace("’", "'") == v.casefold():  # replace apostrophe to match Client's view
                         h5.name = 'h3'
                         lgr2.debug(f'<h5> --> {h5}')
-            
+
         def amend_lists(tree):
             '''Removes paragraph tags within list elements.'''
             lgr2.debug('checking list elements...')
@@ -254,10 +290,11 @@ class Article(object):
             if ftn:
                 h3 = tree.new_tag('h3')
                 h3.string = 'Sources'
-                ftn.parent.parent.insert_before(h3)                 # add <h3>Sources</h3> if endnotes exist
+                # add <h3>Sources</h3> if endnotes exist
+                ftn.parent.parent.insert_before(h3)
                 h3.insert_after('\n')
                 lgr2.debug(f'{h3} <-- inserted before {ftn.parent.parent.name}')
-                
+
                 for a in tree.find_all('a'):
                     if a.has_attr('role'):
                         if a['role'] == 'doc-noteref':
@@ -289,6 +326,7 @@ class Article(object):
             f.write(str(content))
             lgr1.info(f'wrote file -> {f.name}')
 
+
 def load_infile(infile):
     '''
     Runs validation on file input by sys.argv[1].
@@ -305,13 +343,16 @@ def load_infile(infile):
         log.warning(f'{f} not a valid file')
         raise SystemExit
 
+
 def load_award(a, SUBS):
     '''
     Runs validation on award input by sys.argv[2] to return correct award code from SUBS json.
     '''
     log.debug(f'award argument: {a}')
-    keys = [*SUBS.keys()]                                           # unpacks keys into list                 
-    keys.remove('All')                                              # keep only award sections of subs.json    
+    # unpacks keys into list
+    keys = [*SUBS.keys()]
+    # keep only award sections of subs.json
+    keys.remove('All')
     for k in filter(lambda k: a.casefold() in k.casefold(), keys):  # casefold to match case
         award = k
         log.info(f'award -> {award}')
@@ -319,6 +360,7 @@ def load_award(a, SUBS):
     else:
         log.warning(f'{a} not a valid award')
         raise SystemExit
+
 
 def load_json(file):
     '''
@@ -332,10 +374,11 @@ def load_json(file):
     except Exception as e:
         log.error('error loading json:', e)
 
+
 def process(infile, TAGS, SUBS, award):
     Art = Article(
         IN_FILE=infile,
-        TAGS=TAGS, 
+        TAGS=TAGS,
         SUBS=SUBS,
         AWARD=award
     )
@@ -346,8 +389,9 @@ def process(infile, TAGS, SUBS, award):
         with open(infile, encoding='utf-8') as f:
             content = f.read()
     cleaned = Art.clean_html(content)
-    amended = Art.amend_html(cleaned)#.prettify()
+    amended = Art.amend_html(cleaned)  # .prettify()
     Art.write_html(amended)
+
 
 def main():
     '''
@@ -395,7 +439,7 @@ def main():
     Pass in file name and html contents.
     '''
     try:
-        TAGS = load_json('JSON/tags.json') 
+        TAGS = load_json('JSON/tags.json')
         SUBS = load_json('JSON/subs.json')
         try:
             infile = load_infile(sys.argv[1])
@@ -410,7 +454,7 @@ def main():
         if infile.is_dir():
             for f in infile.glob(r'*.docx'):
                 process(f, TAGS, SUBS, award)
-        else:    
+        else:
             process(infile, TAGS, SUBS, award)
         log.info('# FINISHED #')
         # input('hit any key to exit:')
@@ -420,6 +464,7 @@ def main():
     except Exception as e:
         log.error(e)
         raise e
+
 
 if __name__ == '__main__':
     main()
