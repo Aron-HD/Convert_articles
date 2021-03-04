@@ -120,10 +120,10 @@ class Article(object):
         Uses the pypandoc module to convert docx file to html content for parsing and extracts images.
         '''
         if extract_media:
-            lgr1.info('converting docx to html and extracting images...')
+            lgr1.debug('converting docx to html and extracting images...')
             extra_args = [f'--extract-media={self.MEDIA_PATH}']
         else:
-            lgr1.info('converting docx to html...')
+            lgr1.debug('converting docx to html...')
             extra_args = []
         # find a way to extract to same folder rather than 'ID/media'
         content = pypandoc.convert_file(
@@ -138,8 +138,7 @@ class Article(object):
         new_img = image.with_suffix('.jpg')
         cmd = ['magick', str(image), str(new_img)]
         subprocess.call(cmd, shell=True)
-        lgr1.info(f"converted: '{image.name}' --> '{new_img.name}'")
-        return None
+        lgr1.debug(f"converted: '{image.name}' --> '{new_img.name}'")
 
     def rename_docx_images(self):
         '''
@@ -149,11 +148,11 @@ class Article(object):
         path = self.MEDIA_PATH
         ID = self.OUT_FILE.stem  # f.parent.parent.name # to get /<ID> rather than /media
         lgr1.debug(f'ID = {ID}')
-        lgr1.info('renaming images...')
+        lgr1.debug('renaming images...')
         files = {p.resolve() for p in Path(path).glob(r"**/image*") if p.suffix.casefold()
                  in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff", ".tif"]}
         if not files:
-            lgr1.info('no images to rename')
+            lgr1.debug('no images to rename')
         else:
             for f in nat(files):
                 name = f.stem
@@ -194,7 +193,7 @@ class Article(object):
             tags=self.TAGS['tags'],
             strip=True
         )
-        lgr1.info('cleaned html')
+        lgr1.debug('cleaned html')
         return content
 
     def amend_html(self, content):
@@ -262,9 +261,12 @@ class Article(object):
             else:
                 for hdr in headers:
                     if hdr:
-                        hdr.string.wrap(tree.new_tag('strong'))
-                        hdr.name = 'p'
-                        lgr2.debug(f'header --> {hdr}')
+                        try:
+                            hdr.string.wrap(tree.new_tag('strong'))
+                            hdr.name = 'p'
+                            lgr2.debug(f'header --> {hdr}')
+                        except AttributeError as e:
+                            lgr2.warning(f'Problem with header --> {e}')
             # match all p tags with bold and check punctuation endings to filter bold sentences from subheadings in h5
             lgr2.debug('changing all subheadings to h5...')
             paras = tree.find_all('p')
@@ -409,6 +411,8 @@ def process(infile, TAGS, SUBS, award):
     cleaned = Art.clean_html(content)
     amended = Art.amend_html(cleaned)  # .prettify()
     Art.write_html(amended)
+    cleanup_folder = Art.MEDIA_PATH / 'media'
+    return cleanup_folder
 
 
 def main():
@@ -456,6 +460,7 @@ def main():
     Outputs cleaned and amended html content to specified file name.
     Pass in file name and html contents.
     '''
+    temp_dir = None
     try:
         TAGS = load_json('JSON/tags.json')
         SUBS = load_json('JSON/subs.json')
@@ -471,11 +476,15 @@ def main():
 
         if infile.is_dir():
             for f in infile.glob(r'*.docx'):
-                process(f, TAGS, SUBS, award)
+                temp_dir = process(f, TAGS, SUBS, award)
         else:
-            process(infile, TAGS, SUBS, award)
+            temp_dir = process(infile, TAGS, SUBS, award)
+        if temp_dir.is_dir():
+            temp_dir.rmdir()
+            log.debug(f'removed temp folder: {temp_dir}')
+        else:
+            log.debug(f'did not remove temp folder: {temp_dir}')
         log.info('# FINISHED #')
-        # input('hit any key to exit:')
 
     except AttributeError as e:
         lgr1.warning(e)
