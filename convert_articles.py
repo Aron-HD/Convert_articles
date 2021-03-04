@@ -3,8 +3,9 @@ import logging as log
 import os
 import sys
 import json
-import pypandoc
 import bleach
+import pypandoc
+import subprocess
 from bs4 import BeautifulSoup as Soup
 from natsort import natsorted as nat
 from datetime import datetime
@@ -102,7 +103,7 @@ class Article(object):
         # award-specific code to go in img src tags
         self.AWARD_CODE = SUBS[AWARD]['code']
         # path for extracting docximages to
-        self.MEDIA_PATH = IN_FILE.parents[0] / 'htm'
+        self.MEDIA_PATH = IN_FILE.parent / 'htm'
         self.OUT_FILE = Path(f"{self.MEDIA_PATH}/{IN_FILE.stem}.htm")
         try:
             # ensure directory for img / htm extraction exists
@@ -129,6 +130,17 @@ class Article(object):
             str(self.IN_FILE), 'html5', extra_args=extra_args)
         return content
 
+    @staticmethod
+    def image_cleanup(image):
+        '''
+        Convert images that are tiff, tif or emf to jpgs.
+        '''
+        new_img = image.with_suffix('.jpg')
+        cmd = ['magick', str(image), str(new_img)]
+        subprocess.call(cmd, shell=True)
+        lgr1.info(f"converted: '{image.name}' --> '{new_img.name}'")
+        return None
+
     def rename_docx_images(self):
         '''
         Rename extracted images.
@@ -139,7 +151,7 @@ class Article(object):
         lgr1.debug(f'ID = {ID}')
         lgr1.info('renaming images...')
         files = {p.resolve() for p in Path(path).glob(r"**/image*") if p.suffix.casefold()
-                 in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff"]}
+                 in [".jpeg", ".jpg", ".png", ".gif", ".emf", ".tiff", ".tif"]}
         if not files:
             lgr1.info('no images to rename')
         else:
@@ -154,6 +166,12 @@ class Article(object):
                 lgr1.debug(fp)
                 if f.parent.name == 'media':
                     try:
+                        # convert unwanted images
+                        if f.suffix.endswith(('.emf', '.tiff', '.tif')):
+                            self.image_cleanup(f)
+                            # change extension to jpg
+                            fn = fn.replace(ext, '.jpg')
+                            fp = path / fn
                         f.rename(fp)
                         lgr1.debug(f'"{f.name}" --> {fn}')
                         self.IMGS.update({f.name: f"/fulltext/{self.AWARD_CODE}/images/{fn}"})
